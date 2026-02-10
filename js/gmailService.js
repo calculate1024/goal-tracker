@@ -2,7 +2,7 @@
  * gmailService.js — Gmail 信件讀取與發送模組
  *
  * 職責：透過 Google API 讀取與發送使用者的 Gmail 信件。
- * 讀取目前為 Mock 實作，未來可替換為真實 Gmail API 呼叫。
+ * 讀取使用 Gmail REST API（list + get + 解析）。
  * 發送使用 Gmail API 的 users.messages.send 端點。
  *
  * 本模組只負責「信件 I/O」，不負責解析或寫入 store。
@@ -12,6 +12,10 @@
  */
 
 import { getAccessToken } from "./settings.js";
+
+// ── Constants ────────────────────────────────
+
+const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 // ── Type Definitions ────────────────────────
 
@@ -24,35 +28,164 @@ import { getAccessToken } from "./settings.js";
  * @property {string} date    - 收件日期（ISO 格式）
  */
 
+// ── Private Helpers ─────────────────────────
+
+/**
+ * 將 Gmail API 回傳的 URL-safe Base64 body 解碼為 UTF-8 明文
+ *
+ * @param {string} data - URL-safe Base64 編碼的字串
+ * @returns {string} 解碼後的 UTF-8 明文
+ */
+function decodeBase64Url(data) {
+  if (!data) return "";
+  const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+  try {
+    return decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+  } catch {
+    return atob(base64);
+  }
+}
+
+/**
+ * 遞迴搜尋 payload 找到 text/plain 的內容並解碼
+ *
+ * @param {Object} payload - Gmail message 的 payload 物件
+ * @returns {string} 解碼後的純文字字串
+ */
+function extractPlainText(payload) {
+  if (!payload) return "";
+
+  // 非 multipart：直接從 body.data 解碼
+  if (payload.body && payload.body.data) {
+    if (!payload.mimeType || payload.mimeType === "text/plain") {
+      return decodeBase64Url(payload.body.data);
+    }
+  }
+
+  // multipart：遞迴搜尋 parts
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/plain" && part.body && part.body.data) {
+        return decodeBase64Url(part.body.data);
+      }
+      // 遞迴處理巢狀 parts（如 multipart/alternative 內的 multipart/mixed）
+      if (part.parts) {
+        const result = extractPlainText(part);
+        if (result) return result;
+      }
+    }
+  }
+
+  return "";
+}
+
+/**
+ * 從 Gmail message 的 payload.headers 中找出指定 header 的值
+ *
+ * @param {Array<{name: string, value: string}>} headers - header 陣列
+ * @param {string} name - 要找的 header 名稱（不區分大小寫）
+ * @returns {string} header 值，找不到時回傳空字串
+ */
+function getHeader(headers, name) {
+  if (!headers) return "";
+  const header = headers.find(
+    (h) => h.name.toLowerCase() === name.toLowerCase()
+  );
+  return header ? header.value : "";
+}
+
+/**
+ * 將 Gmail API 回傳的 message 物件轉換為 Email 格式
+ *
+ * @param {Object} msg - Gmail API 回傳的 message 物件
+ * @returns {Email} 標準化的 Email 物件
+ */
+function parseMessage(msg) {
+  const headers = msg.payload ? msg.payload.headers : [];
+  return {
+    id: msg.id,
+    from: getHeader(headers, "From"),
+    subject: getHeader(headers, "Subject"),
+    body: extractPlainText(msg.payload),
+    date: getHeader(headers, "Date"),
+  };
+}
+
 // ── Public API ──────────────────────────────
 
 /**
  * 讀取過去 24 小時內的 Gmail 信件
  *
  * 僅回傳 24 小時內收到的信件，避免處理過時或過量的資訊。
- * 目前尚未串接真實 Gmail API，回傳空陣列。
- * 未來替換為真實 Gmail API 呼叫：
- * `gapi.client.gmail.users.messages.list({ q: "newer_than:1d" })`
+ * 使用 Gmail REST API：先 list 取得 ID，再逐筆 get 完整內容。
  *
  * @param {number} [maxResults=5] - 最多回傳幾封信件
  * @returns {Promise<Email[]>} 信件陣列（僅包含過去 24 小時內的信件）
  */
 export async function fetchLatestEmails(maxResults = 5) {
-  // TODO: 串接真實 Gmail API，使用 newer_than:1d 查詢過去 24 小時的信件
-  return [];
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("尚未授權 Gmail，請先連結 Google 帳號");
+  }
+
+  // Step 1: 取得 message ID 列表
+  const listUrl = `${GMAIL_API}/messages?q=newer_than:1d&maxResults=${maxResults}`;
+  const listRes = await fetch(listUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!listRes.ok) {
+    const err = await listRes.json().catch(() => ({}));
+    throw new Error(
+      "Gmail API 讀取失敗：" + (err?.error?.message || `HTTP ${listRes.status}`)
+    );
+  }
+
+  const listData = await listRes.json();
+  const messageIds = listData.messages || [];
+
+  if (messageIds.length === 0) return [];
+
+  // Step 2: 逐筆取得完整信件內容
+  const emails = await Promise.all(
+    messageIds.map(async ({ id }) => {
+      const msgRes = await fetch(`${GMAIL_API}/messages/${id}?format=full`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!msgRes.ok) return null;
+      const msg = await msgRes.json();
+      return parseMessage(msg);
+    })
+  );
+
+  return emails.filter((e) => e !== null);
 }
 
 /**
  * 根據 ID 讀取單封信件的完整內容
  *
- * 目前尚未串接真實 Gmail API，回傳 null。
- *
  * @param {string} emailId - 信件 ID
  * @returns {Promise<Email|null>} 信件物件，找不到時回傳 null
  */
 export async function fetchEmailById(emailId) {
-  // TODO: 串接真實 Gmail API
-  return null;
+  const token = getAccessToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${GMAIL_API}/messages/${emailId}?format=full`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const msg = await res.json();
+    return parseMessage(msg);
+  } catch {
+    return null;
+  }
 }
 
 // ── Send Email ──────────────────────────────
@@ -112,7 +245,7 @@ export async function sendEmail({ to, subject, body }) {
   let response;
   try {
     response = await fetch(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      `${GMAIL_API}/messages/send`,
       {
         method: "POST",
         headers: {

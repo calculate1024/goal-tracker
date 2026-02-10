@@ -127,7 +127,7 @@ export function authorizeGmail(clientId) {
     try {
       const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: clientId,
-        scope: "https://www.googleapis.com/auth/gmail.readonly",
+        scope: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
         callback: (response) => {
           if (response.error) {
             accessToken = null;
