@@ -12,6 +12,7 @@
  */
 
 import { getAccessToken } from "./settings.js";
+import { yesterdayISO } from "./utils.js";
 
 // ── Mock Data ────────────────────────────────
 
@@ -45,19 +46,23 @@ const MOCK_EMAILS = [
 // ── Public API ──────────────────────────────
 
 /**
- * 讀取最新的 Gmail 信件（Mock）
+ * 讀取前一天的 Gmail 信件（Mock）
  *
- * 目前回傳預設的 Mock 資料，未來替換為真實 Gmail API 呼叫：
- * `gapi.client.gmail.users.messages.list()`
+ * 僅回傳日期為昨天的信件，用於每日分析流程。
+ * 目前為 Mock 實作，未來替換為真實 Gmail API 呼叫：
+ * `gapi.client.gmail.users.messages.list({ q: "after:YYYY/MM/DD before:YYYY/MM/DD" })`
  *
  * @param {number} [maxResults=5] - 最多回傳幾封信件
- * @returns {Promise<Email[]>} 信件陣列
+ * @returns {Promise<Email[]>} 信件陣列（僅包含前一天的信件）
  */
 export async function fetchLatestEmails(maxResults = 5) {
   // Mock：模擬網路延遲
   await new Promise((resolve) => setTimeout(resolve, 300));
 
-  return MOCK_EMAILS.slice(0, maxResults);
+  const yesterday = yesterdayISO();
+  return MOCK_EMAILS
+    .filter((e) => e.date === yesterday)
+    .slice(0, maxResults);
 }
 
 /**

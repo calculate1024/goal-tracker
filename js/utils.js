@@ -50,6 +50,17 @@ export function formatDate(dateStr) {
 }
 
 /**
+ * 取得昨天的日期字串（ISO 格式）
+ *
+ * @returns {string} YYYY-MM-DD 格式的昨日日期
+ */
+export function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
+
+/**
  * 判斷指定截止日是否已逾期（早於今天）
  *
  * @param {string | null} deadline - ISO 日期字串（YYYY-MM-DD）
