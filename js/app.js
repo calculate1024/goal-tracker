@@ -11,7 +11,6 @@
  * @module app
  */
 
-import { todayISO } from "./utils.js";
 import {
   addGoal,
   updateGoal,
@@ -64,6 +63,9 @@ import {
   gmailAuthStatusEl,
   saveApiKeyBtn,
   keyResultEl,
+  settingsImportBtn,
+  settingsImportFile,
+  settingsImportResult,
 } from "./dom.js";
 
 // ── Modal ────────────────────────────────────
@@ -225,7 +227,7 @@ function handleExport() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `goal-tracker-backup-${todayISO()}.json`;
+  link.download = "goals_backup.json";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -427,6 +429,36 @@ function handleSaveApiKey() {
   }, 2000);
 }
 
+// ── Settings: Import Backup ──────────────────
+
+/**
+ * 處理設定頁中的備份匯入（覆蓋 + 重新整理頁面）
+ *
+ * @param {Event} e - file input change 事件
+ * @returns {void}
+ */
+function handleSettingsImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = importState(reader.result, "overwrite");
+
+    if (result.ok) {
+      settingsImportResult.textContent = result.message;
+      settingsImportResult.className = "settings__import-result settings__import-result--success";
+      setTimeout(() => location.reload(), 500);
+    } else {
+      settingsImportResult.textContent = result.message;
+      settingsImportResult.className = "settings__import-result settings__import-result--fail";
+    }
+
+    settingsImportFile.value = "";
+  };
+  reader.readAsText(file);
+}
+
 // ── Email-to-Goal ────────────────────────────
 
 /**
@@ -466,6 +498,8 @@ testConnectionBtn.addEventListener("click", handleTestConnection);
 connectGmailBtn.addEventListener("click", handleConnectGmail);
 disconnectGmailBtn.addEventListener("click", handleDisconnectGmail);
 saveApiKeyBtn.addEventListener("click", handleSaveApiKey);
+settingsImportBtn.addEventListener("click", () => settingsImportFile.click());
+settingsImportFile.addEventListener("change", handleSettingsImport);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {

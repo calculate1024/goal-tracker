@@ -233,6 +233,17 @@
           <span class="settings__gmail-status" id="gmailAuthStatus"></span>
         </div>
 
+        <div class="settings__field">
+          <label class="settings__label">匯入備份</label>
+          <div class="settings__actions">
+            <button class="settings__import-btn" id="settingsImportBtn" type="button">
+              選擇 JSON 檔案
+            </button>
+            <input type="file" id="settingsImportFile" accept=".json" hidden>
+            <span class="settings__import-result" id="settingsImportResult"></span>
+          </div>
+        </div>
+
         <button class="settings__save-btn" type="submit">儲存設定</button>
       </form>
     </div>

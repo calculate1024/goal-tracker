@@ -18,7 +18,7 @@ import { generateId, todayISO, isOverdue } from "./utils.js";
 const STORAGE_KEY = "goal-tracker-data";
 
 /** @type {string[]} 預設分類 */
-const DEFAULT_CATEGORIES = ["學習", "健康", "財務", "職涯", "生活"];
+const DEFAULT_CATEGORIES = ["核心專案", "日常營運", "專業成長", "外部協作", "個人管理"];
 
 // ── Type Definitions (JSDoc) ─────────────────
 

@@ -139,5 +139,14 @@ export const gmailAuthStatusEl = document.getElementById("gmailAuthStatus");
 /** @type {HTMLButtonElement} 儲存新金鑰按鈕 */
 export const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
 
+/** @type {HTMLButtonElement} 設定頁匯入按鈕 */
+export const settingsImportBtn = document.getElementById("settingsImportBtn");
+
+/** @type {HTMLInputElement} 設定頁匯入檔案 input */
+export const settingsImportFile = document.getElementById("settingsImportFile");
+
+/** @type {HTMLElement} 設定頁匯入結果文字 */
+export const settingsImportResult = document.getElementById("settingsImportResult");
+
 /** @type {HTMLElement} 金鑰操作結果文字 */
 export const keyResultEl = document.getElementById("keyResult");

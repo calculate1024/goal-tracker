@@ -29,7 +29,7 @@ import { getConfig } from "./settings.js";
 /**
  * @typedef {Object} ParsedGoal
  * @property {string}      title          - 目標名稱
- * @property {string}      category       - 分類（學習、健康、財務、職涯、生活）
+ * @property {string}      category       - 分類（核心專案、日常營運、專業成長、外部協作、個人管理）
  * @property {string}      priority       - 優先度（high、medium、low）
  * @property {string}      source_subject - 來源信件主旨
  * @property {string}      source_from    - 寄件人
@@ -101,11 +101,11 @@ JSON 結構如下：
       "sent_by_me": number
     },
     "categories_distribution": {
-      "學習": number,
-      "健康": number,
-      "財務": number,
-      "職涯": number,
-      "生活": number
+      "核心專案": number,
+      "日常營運": number,
+      "專業成長": number,
+      "外部協作": number,
+      "個人管理": number
     },
     "top_priority": {
       "title": "string - 最重要的一項目標",
@@ -117,7 +117,7 @@ JSON 結構如下：
   "goals": [
     {
       "title": "string - 以動詞開頭，不超過 30 字",
-      "category": "string - 學習 | 健康 | 財務 | 職涯 | 生活",
+      "category": "string - 核心專案 | 日常營運 | 專業成長 | 外部協作 | 個人管理",
       "priority": "string - high | medium | low",
       "source_subject": "string - 來源信件主旨",
       "source_from": "string - 寄件人",
@@ -129,7 +129,7 @@ JSON 結構如下：
 
 ## 欄位規則
 1. title：具體且可執行的一句話，不超過 30 字
-2. category：從 學習、健康、財務、職涯、生活 中擇一
+2. category：從 核心專案、日常營運、專業成長、外部協作、個人管理 中擇一
 3. priority：high = 48小時內需處理或影響重大；medium = 本週內；low = 可延後
 4. subtasks：拆解為 2~5 個具體步驟，每個以動詞開頭
 5. deadline：優先採用信件中明確的日期；相對時間請推算為具體日期（今天是 ${new Date().toISOString().split("T")[0]}）；無法推斷則設為 null
@@ -189,14 +189,14 @@ function parseAIResponse(text) {
     throw new Error("AI 回傳的 JSON 格式不符預期（缺少 analysis_summary 或 goals）");
   }
 
-  const VALID_CATEGORIES = ["學習", "健康", "財務", "職涯", "生活"];
+  const VALID_CATEGORIES = ["核心專案", "日常營運", "專業成長", "外部協作", "個人管理"];
   const VALID_PRIORITIES = ["high", "medium", "low"];
 
   return {
     analysis_summary: parsed.analysis_summary,
     goals: parsed.goals.map((g) => ({
       title: typeof g.title === "string" ? g.title : "",
-      category: VALID_CATEGORIES.includes(g.category) ? g.category : "學習",
+      category: VALID_CATEGORIES.includes(g.category) ? g.category : "核心專案",
       priority: VALID_PRIORITIES.includes(g.priority) ? g.priority : "medium",
       source_subject: g.source_subject || "",
       source_from: g.source_from || "",

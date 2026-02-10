@@ -902,6 +902,33 @@ img {
   color: var(--color-danger);
 }
 
+.settings__import-btn {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.settings__import-btn:hover {
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+}
+
+.settings__import-result {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.settings__import-result--success {
+  color: var(--color-success);
+}
+
+.settings__import-result--fail {
+  color: var(--color-danger);
+}
+
 .settings__save-btn {
   width: 100%;
   padding: var(--space-md);
