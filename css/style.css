@@ -1,0 +1,712 @@
+/* =================================================================
+   GoalTracker — Main Stylesheet
+   BEM Naming Convention | CSS Grid + Flexbox | RWD
+   ================================================================= */
+
+
+/* =================================================================
+   Design Tokens（設計變數）
+   ================================================================= */
+
+:root {
+  /* ── Color ─────────────────────────────── */
+  --color-primary:        #4a90d9;
+  --color-primary-hover:  #3a7bc8;
+  --color-danger:         #e74c3c;
+  --color-danger-bg:      #fef2f2;
+  --color-success:        #27ae60;
+
+  --color-text:           #333333;
+  --color-text-heading:   #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-muted:     #999999;
+  --color-text-placeholder: #bbbbbb;
+
+  --color-surface:        #ffffff;
+  --color-background:     #f0f2f5;
+  --color-border:         #e0e0e0;
+  --color-border-focus:   var(--color-primary);
+
+  --color-primary-bg:     #edf4fc;
+  --color-track-bg:       #eeeeee;
+  --color-overlay:        rgba(0, 0, 0, 0.4);
+  --color-shadow:         rgba(0, 0, 0, 0.08);
+  --color-shadow-hover:   rgba(0, 0, 0, 0.12);
+  --color-shadow-modal:   rgba(0, 0, 0, 0.15);
+
+  /* ── Spacing ───────────────────────────── */
+  --space-2xs:  2px;
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   12px;
+  --space-lg:   16px;
+  --space-xl:   20px;
+  --space-2xl:  24px;
+  --space-3xl:  32px;
+  --space-4xl:  48px;
+
+  /* ── Border Radius ─────────────────────── */
+  --radius-xs:   3px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:  10px;
+  --radius-xl:  12px;
+  --radius-pill: 99px;
+
+  /* ── Typography ────────────────────────── */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.8rem;
+  --font-size-base: 0.875rem;
+  --font-size-md:   0.95rem;
+  --font-size-lg:   1rem;
+  --font-size-xl:   1.05rem;
+  --font-size-2xl:  1.2rem;
+  --font-size-3xl:  1.5rem;
+  --font-size-4xl:  1.75rem;
+  --font-size-5xl:  2rem;
+
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* ── Transition ────────────────────────── */
+  --transition-fast: 0.2s ease;
+  --transition-med:  0.3s ease;
+
+  /* ── Shadow ────────────────────────────── */
+  --shadow-sm:    0 1px 3px var(--color-shadow);
+  --shadow-md:    0 2px 8px var(--color-shadow-hover);
+  --shadow-modal: 0 8px 32px var(--color-shadow-modal);
+
+  /* ── Sizing ─────────────────────────────── */
+  --size-action-btn: 30px;
+  --size-close-btn:  32px;
+  --size-checkbox:   16px;
+  --size-track-h:    6px;
+
+  /* ── Layout ────────────────────────────── */
+  --app-max-width:        720px;
+  --modal-max-width:      480px;
+  --modal-width:          90%;
+  --modal-width-mobile:   95%;
+  --modal-max-height:     85vh;
+  --breakpoint-sm:        576px;  /* 無法用 var() 於 @media，僅作紀錄 */
+
+  /* ── Misc ─────────────────────────────── */
+  --line-height-base:     1.6;
+  --opacity-completed:    0.55;
+  --z-modal:              100;
+}
+
+
+/* =================================================================
+   Modern Reset
+   ================================================================= */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-base);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  cursor: pointer;
+  font: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+
+/* =================================================================
+   Block: app（頁面容器）
+   ================================================================= */
+
+.app {
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.app__main {
+  /* main content area — no additional styling needed */
+}
+
+.app__header {
+  text-align: center;
+  margin-bottom: var(--space-3xl);
+}
+
+.app__title {
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-heading);
+}
+
+.app__subtitle {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.app__footer {
+  margin-top: var(--space-2xl);
+  text-align: center;
+}
+
+.app__export-button {
+  padding: var(--space-sm) var(--space-xl);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.app__export-button:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+
+/* =================================================================
+   Block: dashboard（儀表板）— CSS Grid
+   ================================================================= */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.dashboard__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-lg);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard__number {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+/* -- Modifier: success (進行中) -- */
+.dashboard__card--success .dashboard__number {
+  color: var(--color-success);
+}
+
+/* -- Modifier: danger (已逾期) -- */
+.dashboard__card--danger .dashboard__number {
+  color: var(--color-danger);
+}
+
+.dashboard__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-2xs);
+}
+
+
+/* =================================================================
+   Block: filter（篩選列）— Flexbox
+   ================================================================= */
+
+.filter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.filter__group {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.filter__select {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.filter__select:focus {
+  border-color: var(--color-border-focus);
+}
+
+
+/* =================================================================
+   Block: goal-list（目標列表區）
+   ================================================================= */
+
+.goal-list {
+  margin-bottom: var(--space-lg);
+}
+
+.goal-list__container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.goal-list__empty {
+  text-align: center;
+  padding: var(--space-4xl) var(--space-lg);
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-md);
+}
+
+
+/* =================================================================
+   Block: goal-card（目標卡片）— Flexbox 內部排版
+   ================================================================= */
+
+.goal-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-xl);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.goal-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* -- Modifier: completed -- */
+.goal-card--completed {
+  opacity: var(--opacity-completed);
+}
+
+/* ── Element: header（卡片標題列）── */
+.goal-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.goal-card__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-heading);
+  word-break: break-word;
+}
+
+.goal-card--completed .goal-card__title {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+/* ── Element: actions（操作按鈕群）── */
+.goal-card__actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.goal-card__action {
+  width: var(--size-action-btn);
+  height: var(--size-action-btn);
+  font-size: var(--font-size-base);
+  color: var(--color-text-placeholder);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.goal-card__action:hover {
+  background-color: var(--color-background);
+  color: var(--color-text-secondary);
+}
+
+/* -- Modifier: delete -- */
+.goal-card__action--delete:hover {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+/* ── Element: meta（分類 + 截止日）── */
+.goal-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* -- Modifier: overdue -- */
+.goal-card__meta--overdue {
+  color: var(--color-danger);
+}
+
+
+/* =================================================================
+   Block: category-tag（分類標籤）
+   ================================================================= */
+
+.category-tag {
+  display: inline-block;
+  padding: var(--space-2xs) var(--space-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  background-color: var(--color-primary-bg);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+
+/* =================================================================
+   Block: progress-bar（進度條）
+   ================================================================= */
+
+.progress-bar {
+  margin-bottom: var(--space-md);
+}
+
+.progress-bar__track {
+  width: 100%;
+  height: var(--size-track-h);
+  background-color: var(--color-track-bg);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  width: var(--progress, 0%);
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-xs);
+  transition: width var(--transition-med);
+}
+
+.progress-bar__text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+
+/* =================================================================
+   Block: subtask（子任務項目）— Flexbox
+   ================================================================= */
+
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+}
+
+.subtask__checkbox {
+  width: var(--size-checkbox);
+  height: var(--size-checkbox);
+  accent-color: var(--color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.subtask__text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+/* -- Modifier: completed -- */
+.subtask--completed .subtask__text {
+  text-decoration: line-through;
+  color: var(--color-text-placeholder);
+}
+
+
+/* =================================================================
+   Block: goal-form（新增 / 編輯表單）
+   ================================================================= */
+
+/* ── Element: open-button（位於 goal-list 內的觸發鈕）── */
+.goal-form__open-button {
+  display: block;
+  width: 100%;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+  border-radius: var(--radius-lg);
+  transition: background-color var(--transition-fast);
+}
+
+.goal-form__open-button:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* ── Block-level：goal-form 本體 ── */
+.goal-form {
+  /* form block — layout handled by child elements */
+}
+
+/* ── Element: field（表單欄位群組）── */
+.goal-form__field {
+  margin-bottom: var(--space-lg);
+}
+
+.goal-form__label {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.goal-form__input {
+  width: 100%;
+  padding: var(--space-md) var(--space-md);
+  font-size: var(--font-size-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.goal-form__input:focus {
+  border-color: var(--color-border-focus);
+}
+
+/* ── Element: subtasks（子任務輸入區）── */
+.goal-form__subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.goal-form__subtask-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.goal-form__subtask-row input {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.goal-form__subtask-row input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.goal-form__subtask-remove {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-placeholder);
+  padding: 0 var(--space-sm);
+  transition: color var(--transition-fast);
+}
+
+.goal-form__subtask-remove:hover {
+  color: var(--color-danger);
+}
+
+.goal-form__add-subtask {
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
+  padding: var(--space-xs) 0;
+}
+
+.goal-form__add-subtask:hover {
+  text-decoration: underline;
+}
+
+/* ── Element: submit（儲存按鈕）── */
+.goal-form__submit {
+  width: 100%;
+  padding: var(--space-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.goal-form__submit:hover {
+  background-color: var(--color-primary-hover);
+}
+
+
+/* =================================================================
+   Block: modal（彈窗）
+   ================================================================= */
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
+}
+
+/* -- Modifier: open -- */
+.modal--open {
+  display: flex;
+}
+
+.modal__overlay {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-overlay);
+}
+
+.modal__content {
+  position: relative;
+  width: var(--modal-width);
+  max-width: var(--modal-max-width);
+  max-height: var(--modal-max-height);
+  overflow-y: auto;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  box-shadow: var(--shadow-modal);
+}
+
+.modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+}
+
+.modal__title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.modal__close {
+  font-size: var(--font-size-3xl);
+  color: var(--color-text-muted);
+  width: var(--size-close-btn);
+  height: var(--size-close-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.modal__close:hover {
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+
+/* =================================================================
+   RWD — Mobile（≤ 576px）
+   ================================================================= */
+
+@media (max-width: 576px) { /* --breakpoint-sm */
+  /* app */
+  .app {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .app__title {
+    font-size: var(--font-size-3xl);
+  }
+
+  /* dashboard: 4 欄 → 2 欄 → 橫向單列 */
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .dashboard__card {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .dashboard__number {
+    font-size: var(--font-size-2xl);
+  }
+
+  .dashboard__label {
+    margin-top: 0;
+  }
+
+  /* filter: 換行堆疊 */
+  .filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter__group {
+    width: 100%;
+  }
+
+  .filter__select {
+    flex: 1;
+  }
+
+  /* goal-card */
+  .goal-card {
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  /* modal */
+  .modal__content {
+    width: var(--modal-width-mobile);
+    padding: var(--space-xl) var(--space-lg);
+  }
+}

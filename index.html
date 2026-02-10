@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoalTracker — 個人目標管理系統</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ============================
+         Block: app（頁面容器）
+         ============================ -->
+    <header class="app__header">
+      <h1 class="app__title">GoalTracker</h1>
+      <p class="app__subtitle">把大目標拆成小步驟，每天看見自己的進步</p>
+    </header>
+
+    <main class="app__main">
+
+      <!-- ============================
+           Block: dashboard（儀表板）
+           ============================ -->
+      <section class="dashboard" aria-label="統計儀表板">
+        <div class="dashboard__card">
+          <span class="dashboard__number" id="totalCount">0</span>
+          <span class="dashboard__label">全部目標</span>
+        </div>
+        <div class="dashboard__card">
+          <span class="dashboard__number" id="completedCount">0</span>
+          <span class="dashboard__label">已完成</span>
+        </div>
+        <div class="dashboard__card dashboard__card--success">
+          <span class="dashboard__number" id="onTrackCount">0</span>
+          <span class="dashboard__label">進行中</span>
+        </div>
+        <div class="dashboard__card dashboard__card--danger">
+          <span class="dashboard__number" id="overdueCount">0</span>
+          <span class="dashboard__label">已逾期</span>
+        </div>
+      </section>
+
+      <!-- ============================
+           Block: goal-list（目標列表區）
+           包含: filter, goal-form 觸發鈕, 掛載點
+           ============================ -->
+      <section class="goal-list" aria-label="目標列表">
+
+        <!-- Block: filter（篩選列） -->
+        <nav class="filter" aria-label="篩選與排序">
+          <div class="filter__group">
+            <select class="filter__select" id="filterCategory" aria-label="分類篩選">
+              <option value="all">全部分類</option>
+            </select>
+            <select class="filter__select" id="filterStatus" aria-label="狀態篩選">
+              <option value="all">全部狀態</option>
+              <option value="active">進行中</option>
+              <option value="completed">已完成</option>
+            </select>
+          </div>
+          <select class="filter__select" id="sortBy" aria-label="排序方式">
+            <option value="deadline">依截止日排序</option>
+            <option value="createdAt">依建立日排序</option>
+            <option value="progress">依進度排序</option>
+          </select>
+        </nav>
+
+        <!-- Block: goal-form（新增目標觸發鈕） -->
+        <button class="goal-form__open-button" id="openFormBtn" type="button">
+          + 新增目標
+        </button>
+
+        <!--
+          掛載點：renderer.js 將在此動態渲染以下 BEM Block：
+          - .goal-card          （單一目標卡片）
+          - .goal-card__title   （目標標題）
+          - .progress-bar       （進度條）
+          - .subtask            （子任務項目）
+          - .category-tag       （分類標籤）
+        -->
+        <div class="goal-list__container" id="goalContainer"></div>
+
+      </section>
+
+      <!-- 匯出 -->
+      <footer class="app__footer">
+        <button class="app__export-button" id="exportBtn" type="button">
+          匯出 JSON 備份
+        </button>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- ============================
+       Block: modal（彈窗）
+       Block: goal-form（新增 / 編輯表單）
+       ============================ -->
+  <div class="modal" id="goalModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal__overlay" id="modalOverlay"></div>
+    <div class="modal__content">
+      <header class="modal__header">
+        <h2 class="modal__title" id="modalTitle">新增目標</h2>
+        <button class="modal__close" id="modalClose" type="button" aria-label="關閉">&times;</button>
+      </header>
+
+      <form class="goal-form" id="goalForm">
+        <div class="goal-form__field">
+          <label class="goal-form__label" for="goalTitle">目標名稱</label>
+          <input
+            class="goal-form__input"
+            id="goalTitle"
+            type="text"
+            placeholder="例：每週運動 3 次"
+            autocomplete="off"
+            required
+          >
+        </div>
+
+        <div class="goal-form__field">
+          <label class="goal-form__label" for="goalCategory">分類</label>
+          <select class="goal-form__input" id="goalCategory">
+            <!-- 由 renderer.js 動態填入 category-tag 選項 -->
+          </select>
+        </div>
+
+        <div class="goal-form__field">
+          <label class="goal-form__label" for="goalDeadline">截止日期</label>
+          <input class="goal-form__input" id="goalDeadline" type="date">
+        </div>
+
+        <div class="goal-form__field">
+          <label class="goal-form__label" id="subtaskLabel">子任務</label>
+          <div class="goal-form__subtasks" id="subtaskContainer" role="group" aria-labelledby="subtaskLabel">
+            <!-- 由 app.js 動態新增 subtask 輸入列 -->
+          </div>
+          <button class="goal-form__add-subtask" id="addSubtaskBtn" type="button">
+            + 新增子任務
+          </button>
+        </div>
+
+        <input type="hidden" id="goalId">
+        <button class="goal-form__submit" type="submit">儲存</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 單一進入點，以 ES Module 載入 -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
