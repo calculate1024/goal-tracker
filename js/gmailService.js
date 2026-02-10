@@ -12,9 +12,8 @@
  */
 
 import { getAccessToken } from "./settings.js";
-import { yesterdayISO } from "./utils.js";
 
-// ── Mock Data ────────────────────────────────
+// ── Type Definitions ────────────────────────
 
 /**
  * @typedef {Object} Email
@@ -25,56 +24,35 @@ import { yesterdayISO } from "./utils.js";
  * @property {string} date    - 收件日期（ISO 格式）
  */
 
-/** @type {Email[]} Mock 信件資料 */
-const MOCK_EMAILS = [
-  {
-    id: "m_001",
-    from: "productivity@example.com",
-    subject: "本週目標：實踐時間盒工作法",
-    body: `實踐「時間盒」工作法\n列出今日三件最重要的事\n為每件事設定 25 分鐘時間盒\n完成後休息 5 分鐘再繼續`,
-    date: "2026-02-10",
-  },
-  {
-    id: "m_002",
-    from: "coach@example.com",
-    subject: "讀書計畫：一件事的力量",
-    body: `閱讀《一件事》並實踐核心原則\n找出你的「一件事」\n每天早上優先處理它\n記錄每週的專注時數\n月底回顧成果`,
-    date: "2026-02-11",
-  },
-];
-
 // ── Public API ──────────────────────────────
 
 /**
- * 讀取前一天的 Gmail 信件（Mock）
+ * 讀取前一天的 Gmail 信件
  *
  * 僅回傳日期為昨天的信件，用於每日分析流程。
- * 目前為 Mock 實作，未來替換為真實 Gmail API 呼叫：
+ * 目前尚未串接真實 Gmail API，回傳空陣列。
+ * 未來替換為真實 Gmail API 呼叫：
  * `gapi.client.gmail.users.messages.list({ q: "after:YYYY/MM/DD before:YYYY/MM/DD" })`
  *
  * @param {number} [maxResults=5] - 最多回傳幾封信件
  * @returns {Promise<Email[]>} 信件陣列（僅包含前一天的信件）
  */
 export async function fetchLatestEmails(maxResults = 5) {
-  // Mock：模擬網路延遲
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const yesterday = yesterdayISO();
-  return MOCK_EMAILS
-    .filter((e) => e.date === yesterday)
-    .slice(0, maxResults);
+  // TODO: 串接真實 Gmail API，使用 yesterdayISO() 作為查詢日期範圍
+  return [];
 }
 
 /**
- * 根據 ID 讀取單封信件的完整內容（Mock）
+ * 根據 ID 讀取單封信件的完整內容
+ *
+ * 目前尚未串接真實 Gmail API，回傳 null。
  *
  * @param {string} emailId - 信件 ID
  * @returns {Promise<Email|null>} 信件物件，找不到時回傳 null
  */
 export async function fetchEmailById(emailId) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  return MOCK_EMAILS.find((e) => e.id === emailId) || null;
+  // TODO: 串接真實 Gmail API
+  return null;
 }
 
 // ── Send Email ──────────────────────────────

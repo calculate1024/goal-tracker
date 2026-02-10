@@ -151,7 +151,7 @@ export async function runEmailToGoal(maxEmails = 5) {
   if (emails.length === 0) {
     return {
       ok: true,
-      message: "沒有新的信件可處理",
+      message: "前一天沒有可處理的信件",
       results: [],
     };
   }
