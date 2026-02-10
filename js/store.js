@@ -71,7 +71,7 @@ function loadState() {
           goal.progress = calcProgressValue(goal.subtasks);
         }
       });
-      return { ...getDefaultState(), ...saved };
+      return { ...getDefaultState(), ...saved, categories: [...DEFAULT_CATEGORIES] };
     }
     return getDefaultState();
   } catch {
