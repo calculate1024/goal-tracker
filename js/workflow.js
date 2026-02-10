@@ -1,44 +1,45 @@
 /**
  * workflow.js — 流程串接模組（主控制器）
  *
- * 職責：串接 gmailService（讀取信件）→ aiService（AI 分析）→ store（寫入目標），
+ * 職責：串接 gmailService（讀取信件）→ aiService（批次 AI 分析）→ store（寫入目標），
  * 實現「從 Gmail 自動產生目標」的完整流程。
  *
  * 執行前會檢查 settings.js 中的 Client ID 與 API Key 是否已設定，
  * 若未設定則中止並回傳提示訊息。
  *
- * 資料流：Gmail → Email[] → aiService.analyzeEmail() → ParsedGoal → store.addGoal()
+ * 資料流：Gmail → Email[] → 合併 → aiService.analyzeEmails() → AnalysisResult → store.addGoal()
  *
  * @module workflow
  */
 
-import { fetchLatestEmails, sendEmail } from "./gmailService.js";
-import { analyzeEmail } from "./aiService.js";
+import { fetchLatestEmails, fetchUserEmail, sendEmail } from "./gmailService.js";
+import { analyzeEmails, buildSummaryEmail } from "./aiService.js";
 import { addGoal } from "./store.js";
 import { getConfig, getAccessToken } from "./settings.js";
 
 // ── Type Definitions ────────────────────────
 
 /**
- * 單封信件的處理結果
+ * 單個目標的處理結果
  *
- * @typedef {Object} EmailResult
- * @property {string}  emailId      - 信件 ID
- * @property {string}  subject      - 信件主旨
- * @property {boolean} success      - 是否成功產生目標
- * @property {string}  [goalId]     - 成功時的目標 ID
- * @property {string}  [title]      - 成功時的目標名稱
- * @property {string}  [error]      - 失敗時的錯誤訊息
- * @property {string}  [sendWarning] - 發信失敗的警告訊息
+ * @typedef {Object} GoalResult
+ * @property {boolean} success        - 是否成功寫入 store
+ * @property {string}  [goalId]       - 成功時的目標 ID
+ * @property {string}  title          - 目標名稱
+ * @property {string}  category       - 目標分類
+ * @property {string}  priority       - 優先度
+ * @property {string}  source_subject - 來源信件主旨
+ * @property {string}  [error]        - 失敗時的錯誤訊息
  */
 
 /**
  * 工作流程執行結果
  *
  * @typedef {Object} WorkflowResult
- * @property {boolean}       ok       - 整體是否成功
- * @property {string}        message  - 結果摘要訊息
- * @property {EmailResult[]} results  - 每封信件的處理結果
+ * @property {boolean}      ok              - 整體是否成功
+ * @property {string}       message         - 結果摘要訊息
+ * @property {GoalResult[]} results         - 每個目標的處理結果
+ * @property {Object}       [analysisSummary] - AI 分析摘要
  */
 
 // ── Private: Credential Check ───────────────
@@ -64,63 +65,41 @@ function checkCredentials() {
   };
 }
 
-// ── Private: Email Notification ─────────────
+// ── Private: Email Formatting ───────────────
 
 /**
- * 組裝目標建立結果的摘要郵件內文
+ * 將多封 Email 物件合併為 AI 可讀的文字格式
  *
- * @param {EmailResult[]} successResults - 成功建立的目標結果
- * @returns {string} 純文字郵件內文
+ * @param {import('./gmailService.js').Email[]} emails - 信件陣列
+ * @returns {string} 格式化後的多封信件文字
  */
-function buildSummaryBody(successResults) {
-  const lines = [
-    "GoalTracker — AI 目標建立通知",
-    "",
-    `已從信件中成功建立 ${successResults.length} 個目標：`,
-    "",
-  ];
-
-  successResults.forEach((r, i) => {
-    lines.push(`${i + 1}. ${r.title}`);
-    lines.push(`   來源信件主旨：${r.subject}`);
-    lines.push("");
-  });
-
-  lines.push("請開啟 GoalTracker 查看完整內容並開始執行！");
-  return lines.join("\n");
-}
-
-/**
- * 嘗試發送結果摘要郵件至使用者的 Gmail（me）
- *
- * 發信失敗不應中斷主流程，因此回傳結果而非拋出錯誤。
- *
- * @param {EmailResult[]} successResults - 成功建立的目標結果
- * @returns {Promise<{ ok: boolean, message: string }>} 發送結果
- */
-async function trySendSummaryEmail(successResults) {
-  try {
-    return await sendEmail({
-      to: "me",
-      subject: `[GoalTracker] 已建立 ${successResults.length} 個新目標`,
-      body: buildSummaryBody(successResults),
-    });
-  } catch (err) {
-    return { ok: false, message: err.message };
-  }
+function formatEmailsForPrompt(emails) {
+  return emails
+    .map(
+      (email, i) =>
+        `=== Email ${i + 1}/${emails.length} ===\n` +
+        `From: ${email.from}\n` +
+        `Subject: ${email.subject}\n` +
+        `Date: ${email.date}\n` +
+        `---\n` +
+        `${email.body}`
+    )
+    .join("\n\n");
 }
 
 // ── Public API ──────────────────────────────
 
 /**
- * 執行完整的「Gmail → 目標」工作流程
+ * 執行完整的「Gmail → 目標」工作流程（批次分析）
  *
  * 步驟：
  * 1. 檢查 Client ID 與 API Key 是否已設定
- * 2. 讀取最新 Gmail 信件
- * 3. 逐封信件透過 AI 分析
- * 4. 將分析結果自動寫入 store（addGoal）
- * 5. 回傳處理結果摘要
+ * 2. 取得使用者 email 與最新 Gmail 信件
+ * 3. 合併所有信件後一次送給 AI 批次分析
+ * 4. AI 自動篩選需行動的信件並產出目標
+ * 5. 將分析結果自動寫入 store（addGoal）
+ * 6. 發送摘要通知郵件
+ * 7. 回傳處理結果摘要
  *
  * @param {number} [maxEmails=5] - 最多處理幾封信件
  * @returns {Promise<WorkflowResult>} 工作流程執行結果
@@ -136,7 +115,14 @@ export async function runEmailToGoal(maxEmails = 5) {
     };
   }
 
-  // Step 2: 讀取信件
+  // Step 2: 取得使用者 email 與信件
+  let userEmail;
+  try {
+    userEmail = await fetchUserEmail();
+  } catch {
+    userEmail = "me";
+  }
+
   let emails;
   try {
     emails = await fetchLatestEmails(maxEmails);
@@ -156,56 +142,83 @@ export async function runEmailToGoal(maxEmails = 5) {
     };
   }
 
-  // Step 3 & 4: 逐封分析並寫入 store
-  /** @type {EmailResult[]} */
+  // Step 3: 合併信件並送 AI 批次分析
+  const emailBodies = formatEmailsForPrompt(emails);
+
+  let analysisResult;
+  try {
+    analysisResult = await analyzeEmails(emailBodies, userEmail);
+  } catch (err) {
+    return {
+      ok: false,
+      message: "AI 分析失敗：" + err.message,
+      results: [],
+    };
+  }
+
+  // Step 4: 將篩選後的目標寫入 store
+  /** @type {GoalResult[]} */
   const results = [];
 
-  for (const email of emails) {
+  for (const parsedGoal of analysisResult.goals) {
     try {
-      const parsed = await analyzeEmail(email.body);
-
       const goal = addGoal({
-        title: parsed.title,
-        category: parsed.category || "學習",
-        deadline: parsed.deadline,
-        subtasks: parsed.subtasks,
+        title: parsedGoal.title,
+        category: parsedGoal.category || "學習",
+        deadline: parsedGoal.deadline,
+        subtasks: parsedGoal.subtasks,
       });
 
       results.push({
-        emailId: email.id,
-        subject: email.subject,
         success: true,
         goalId: goal.id,
-        title: parsed.title,
+        title: parsedGoal.title,
+        category: parsedGoal.category,
+        priority: parsedGoal.priority,
+        source_subject: parsedGoal.source_subject,
       });
     } catch (err) {
       results.push({
-        emailId: email.id,
-        subject: email.subject,
         success: false,
+        title: parsedGoal.title,
+        category: parsedGoal.category,
+        priority: parsedGoal.priority,
+        source_subject: parsedGoal.source_subject,
         error: err.message,
       });
     }
   }
 
-  // Step 5: 自動發送結果摘要郵件
-  const successResults = results.filter((r) => r.success);
+  // Step 5: 發送摘要通知郵件
   let sendWarning = "";
 
-  if (successResults.length > 0 && getAccessToken()) {
-    const emailResult = await trySendSummaryEmail(successResults);
-    if (!emailResult.ok) {
-      sendWarning = emailResult.message;
+  if (getAccessToken()) {
+    try {
+      const summaryEmail = buildSummaryEmail(analysisResult);
+      const emailResult = await sendEmail({
+        to: "me",
+        subject: summaryEmail.subject,
+        body: summaryEmail.body,
+      });
+      if (!emailResult.ok) {
+        sendWarning = emailResult.message;
+      }
+    } catch (err) {
+      sendWarning = err.message;
     }
   }
 
   // Step 6: 組合結果摘要
-  const successCount = successResults.length;
+  const summary = analysisResult.analysis_summary;
+  const successCount = results.filter((r) => r.success).length;
   const failCount = results.length - successCount;
 
-  let message = `已處理 ${results.length} 封信件：${successCount} 個目標建立成功`;
+  let message = `分析 ${summary.total_emails} 封信件：${summary.filtered_in} 封需行動、${summary.filtered_out} 封已排除`;
+  if (successCount > 0) {
+    message += `，已建立 ${successCount} 個目標`;
+  }
   if (failCount > 0) {
-    message += `，${failCount} 封處理失敗`;
+    message += `，${failCount} 個目標寫入失敗`;
   }
   if (sendWarning) {
     message += `（郵件通知失敗：${sendWarning}）`;
@@ -215,6 +228,7 @@ export async function runEmailToGoal(maxEmails = 5) {
     ok: failCount === 0,
     message,
     results,
+    analysisSummary: summary,
   };
 }
 

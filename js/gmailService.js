@@ -188,6 +188,35 @@ export async function fetchEmailById(emailId) {
   }
 }
 
+// ── User Profile ────────────────────────────
+
+/**
+ * 取得目前授權使用者的 Gmail 電子郵件地址
+ *
+ * @returns {Promise<string>} 使用者的 email 地址
+ * @throws {Error} 未授權或 API 呼叫失敗
+ */
+export async function fetchUserEmail() {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("尚未授權 Gmail，請先連結 Google 帳號");
+  }
+
+  const res = await fetch(`${GMAIL_API}/profile`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      "無法取得使用者資訊：" + (err?.error?.message || `HTTP ${res.status}`)
+    );
+  }
+
+  const profile = await res.json();
+  return profile.emailAddress;
+}
+
 // ── Send Email ──────────────────────────────
 
 /**

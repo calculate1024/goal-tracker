@@ -1,7 +1,8 @@
 /**
  * aiService.js — AI 分析模組
  *
- * 職責：將 Email 內容透過 Anthropic API 分析，產出標準化的目標資料。
+ * 職責：將多封 Email 內容透過 Anthropic API 批次分析，
+ * 先篩選出需要使用者行動的信件，再產出標準化的目標資料。
  *
  * 本模組只負責「分析」，不負責讀取信件或寫入 store。
  * 信件讀取由 gmailService.js 負責，流程串接由 workflow.js 負責。
@@ -14,56 +15,126 @@ import { getConfig } from "./settings.js";
 // ── Type Definitions ────────────────────────
 
 /**
- * AI 分析後的標準目標格式
- *
+ * @typedef {Object} AnalysisSummary
+ * @property {number}   total_emails            - 分析的信件總數
+ * @property {number}   filtered_in             - 需行動的信件數
+ * @property {number}   filtered_out            - 被排除的信件數
+ * @property {Object}   filter_breakdown        - 排除分類明細
+ * @property {Object}   categories_distribution - 目標分類分布
+ * @property {Object}   top_priority            - 最重要項目
+ * @property {string}   analysis_period         - 分析時段描述
+ * @property {string[]} skipped_subjects        - 被排除信件的主旨
+ */
+
+/**
  * @typedef {Object} ParsedGoal
- * @property {string}      title    - 目標名稱
- * @property {string}      category - 分類（學習、健康、財務、職涯、生活）
- * @property {string[]}    subtasks - 子任務文字陣列
- * @property {string|null} deadline - 截止日期（YYYY-MM-DD），無法推斷時為 null
+ * @property {string}      title          - 目標名稱
+ * @property {string}      category       - 分類（學習、健康、財務、職涯、生活）
+ * @property {string}      priority       - 優先度（high、medium、low）
+ * @property {string}      source_subject - 來源信件主旨
+ * @property {string}      source_from    - 寄件人
+ * @property {string[]}    subtasks       - 子任務文字陣列
+ * @property {string|null} deadline       - 截止日期（YYYY-MM-DD），無法推斷時為 null
+ */
+
+/**
+ * @typedef {Object} AnalysisResult
+ * @property {AnalysisSummary} analysis_summary - 分析摘要
+ * @property {ParsedGoal[]}    goals            - 目標陣列
  */
 
 // ── Private: Prompt Formatting ──────────────
 
 /**
- * 建立發送給 AI 的 Prompt（SMART 原則）
+ * 建立發送給 AI 的 Prompt（批次分析 + 篩選 + SMART 原則）
  *
- * 要求 AI 依據 SMART（Specific, Measurable, Achievable, Relevant, Time-bound）
- * 原則分析 Email 並回傳嚴格的 JSON 格式。
- *
- * @param {string} emailBody - 信件內文
+ * @param {string} emailBodies - 格式化後的多封信件內容
+ * @param {string} userEmail   - 使用者的 email 地址
  * @returns {string} 格式化後的 Prompt
  */
-function buildPrompt(emailBody) {
-  return [
-    "你是一位專業的個人目標管理顧問，擅長運用 SMART 原則將模糊的想法轉化為可執行的目標。",
-    "",
-    "請根據以下 Email 內容，運用 SMART 原則萃取出一個結構化目標：",
-    "- Specific（具體）：目標名稱必須明確描述要達成的事項",
-    "- Measurable（可衡量）：每個子任務必須有明確的完成標準",
-    "- Achievable（可達成）：子任務應為合理可執行的步驟",
-    "- Relevant（相關）：所有子任務必須與主目標直接相關",
-    "- Time-bound（有時限）：盡可能從信件內容推斷截止日期",
-    "",
-    "你必須回傳且僅回傳一個嚴格的 JSON 物件，不包含任何 markdown 標記、註解或額外文字。",
-    "JSON 結構如下：",
-    "{",
-    '  "title": "string — 一句話描述目標，以動詞開頭（如：完成…、建立…、學會…）",',
-    '  "category": "string — 從以下分類中擇一：學習、健康、財務、職涯、生活",',
-    '  "subtasks": ["string", "string", ...],',
-    '  "deadline": "string | null — 格式為 YYYY-MM-DD，無法推斷時為 null"',
-    "}",
-    "",
-    "欄位規則：",
-    "1. title：具體且可執行的一句話，不超過 30 字",
-    "2. category：根據信件內容判斷最適合的分類",
-    "3. subtasks：拆解為 2～5 個具體步驟，每個步驟以動詞開頭，描述可量化的行動",
-    "4. deadline：優先採用信件中明確提及的日期；若信件僅提及相對時間（如「本週」「下個月」），請推算為具體日期；若完全無時間線索則設為 null",
-    "5. 僅回傳 JSON，不要有任何額外輸出",
-    "",
-    "--- Email 內容 ---",
-    emailBody,
-  ].join("\n");
+function buildPrompt(emailBodies, userEmail) {
+  return `你是一位專業的個人目標管理顧問，擅長運用 SMART 原則將模糊的想法轉化為可執行的目標。
+
+## 第一步：信件篩選（關鍵）
+
+請先逐封分析以下 Email，判斷哪些信件「真正需要我（${userEmail}）採取行動」。
+
+僅納入符合以下條件的信件：
+- 我是被指派任務的對象（被要求、被請求、被 assign）
+- 我是主要負責人或需要回覆決策的人
+- 明確有我需要完成的 deadline 或交付物
+
+請排除以下類型：
+- 純通知/公告/FYI 類信件（我只是 CC 或知會對象）
+- 他人之間的討論我僅被抄送
+- 系統自動通知（如日報、週報推播、審批已完成通知）
+- 廣告、電子報、訂閱內容
+- 我自己寄出的信（除非包含我對自己的提醒）
+
+## 第二步：目標萃取
+
+對篩選後的信件，運用 SMART 原則萃取結構化目標：
+- Specific（具體）：目標名稱必須明確描述要達成的事項
+- Measurable（可衡量）：每個子任務必須有明確的完成標準
+- Achievable（可達成）：子任務應為合理可執行的步驟
+- Relevant（相關）：所有子任務必須與主目標直接相關
+- Time-bound（有時限）：盡可能從信件內容推斷截止日期
+
+## 輸出格式
+
+你必須回傳且僅回傳一個嚴格的 JSON 物件，不包含任何 markdown 標記、註解或額外文字。
+
+JSON 結構如下：
+{
+  "analysis_summary": {
+    "total_emails": number,
+    "filtered_in": number,
+    "filtered_out": number,
+    "filter_breakdown": {
+      "actionable": number,
+      "fyi_or_cc": number,
+      "auto_notification": number,
+      "spam_or_newsletter": number,
+      "sent_by_me": number
+    },
+    "categories_distribution": {
+      "學習": number,
+      "健康": number,
+      "財務": number,
+      "職涯": number,
+      "生活": number
+    },
+    "top_priority": {
+      "title": "string - 最重要的一項目標",
+      "reason": "string - 為何判定為最重要（考慮緊急度與影響範圍）"
+    },
+    "analysis_period": "string - 分析時段描述，如 2026-02-09 12:00 ~ 2026-02-10 12:00",
+    "skipped_subjects": ["string - 被排除信件的主旨，供我確認"]
+  },
+  "goals": [
+    {
+      "title": "string - 以動詞開頭，不超過 30 字",
+      "category": "string - 學習 | 健康 | 財務 | 職涯 | 生活",
+      "priority": "string - high | medium | low",
+      "source_subject": "string - 來源信件主旨",
+      "source_from": "string - 寄件人",
+      "subtasks": ["string - 2~5 個，動詞開頭，可量化"],
+      "deadline": "string | null - YYYY-MM-DD 格式"
+    }
+  ]
+}
+
+## 欄位規則
+1. title：具體且可執行的一句話，不超過 30 字
+2. category：從 學習、健康、財務、職涯、生活 中擇一
+3. priority：high = 48小時內需處理或影響重大；medium = 本週內；low = 可延後
+4. subtasks：拆解為 2~5 個具體步驟，每個以動詞開頭
+5. deadline：優先採用信件中明確的日期；相對時間請推算為具體日期（今天是 ${new Date().toISOString().split("T")[0]}）；無法推斷則設為 null
+6. goals 陣列依 priority 排序（high → medium → low）
+7. 僅回傳 JSON，不要有任何額外輸出
+
+--- Email 內容 ---
+${emailBodies}`;
 }
 
 // ── Constants ───────────────────────────────
@@ -102,7 +173,7 @@ function formatApiError(status, body) {
  * 從 AI 回應文字中解析 JSON，容忍 markdown 包裹
  *
  * @param {string} text - AI 回應原始文字
- * @returns {ParsedGoal} 解析結果
+ * @returns {AnalysisResult} 解析結果
  */
 function parseAIResponse(text) {
   // 移除可能的 markdown code block 包裹
@@ -110,37 +181,47 @@ function parseAIResponse(text) {
 
   const parsed = JSON.parse(cleaned);
 
-  // 基本欄位驗證
-  if (typeof parsed.title !== "string" || !Array.isArray(parsed.subtasks)) {
-    throw new Error("AI 回傳的 JSON 格式不符預期");
+  // 基本結構驗證
+  if (!parsed.analysis_summary || !Array.isArray(parsed.goals)) {
+    throw new Error("AI 回傳的 JSON 格式不符預期（缺少 analysis_summary 或 goals）");
   }
 
   const VALID_CATEGORIES = ["學習", "健康", "財務", "職涯", "生活"];
+  const VALID_PRIORITIES = ["high", "medium", "low"];
 
   return {
-    title: parsed.title,
-    category: VALID_CATEGORIES.includes(parsed.category) ? parsed.category : "學習",
-    subtasks: parsed.subtasks.filter((s) => typeof s === "string" && s.length > 0),
-    deadline: typeof parsed.deadline === "string" ? parsed.deadline : null,
+    analysis_summary: parsed.analysis_summary,
+    goals: parsed.goals.map((g) => ({
+      title: typeof g.title === "string" ? g.title : "",
+      category: VALID_CATEGORIES.includes(g.category) ? g.category : "學習",
+      priority: VALID_PRIORITIES.includes(g.priority) ? g.priority : "medium",
+      source_subject: g.source_subject || "",
+      source_from: g.source_from || "",
+      subtasks: Array.isArray(g.subtasks)
+        ? g.subtasks.filter((s) => typeof s === "string" && s.length > 0)
+        : [],
+      deadline: typeof g.deadline === "string" ? g.deadline : null,
+    })),
   };
 }
 
 // ── Public API ──────────────────────────────
 
 /**
- * 分析 Email 內容，透過 Anthropic API 產出標準化的目標資料
+ * 批次分析多封 Email 內容，透過 Anthropic API 產出篩選摘要與目標陣列
  *
- * @param {string} emailBody - 信件內文
- * @returns {Promise<ParsedGoal>} 標準化的目標資料
+ * @param {string} emailBodies - 格式化後的多封信件內容
+ * @param {string} userEmail   - 使用者的 email 地址
+ * @returns {Promise<AnalysisResult>} 分析摘要與目標陣列
  * @throws {Error} API Key 未設定、無效、額度不足或網路錯誤
  */
-export async function analyzeEmail(emailBody) {
+export async function analyzeEmails(emailBodies, userEmail) {
   const apiKey = getConfig("aiApiKey");
   if (!apiKey) {
     throw new Error("尚未設定 AI API Key，請至設定頁面填寫");
   }
 
-  const prompt = buildPrompt(emailBody);
+  const prompt = buildPrompt(emailBodies, userEmail);
 
   let response;
   try {
@@ -154,7 +235,7 @@ export async function analyzeEmail(emailBody) {
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 1024,
+        max_tokens: 4096,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -181,11 +262,73 @@ export async function analyzeEmail(emailBody) {
 }
 
 /**
+ * 根據 AI 分析結果組裝摘要通知郵件
+ *
+ * @param {AnalysisResult} parsed - AI 分析結果
+ * @returns {{ subject: string, body: string }} 郵件主旨與內文
+ */
+export function buildSummaryEmail(parsed) {
+  const s = parsed.analysis_summary;
+  const goals = parsed.goals || [];
+
+  const goalsList = goals
+    .map(
+      (g, i) =>
+        `${i + 1}. [${g.priority.toUpperCase()}][${g.category}] ${g.title}` +
+        `${g.deadline ? ` (截止：${g.deadline})` : ""}` +
+        `\n   來源：${g.source_from} - ${g.source_subject}` +
+        `\n   步驟：${g.subtasks.join("、")}`
+    )
+    .join("\n\n");
+
+  const skipped = (s.skipped_subjects || [])
+    .map((subj, i) => `  ${i + 1}. ${subj}`)
+    .join("\n");
+
+  return {
+    subject: `每日目標摘要｜${s.filtered_in} 項待辦｜${s.analysis_period}`,
+    body: `Hi,
+
+以下是本次 Email 自動分析的摘要報告：
+
+═══ 分析總覽 ═══
+- 分析時段：${s.analysis_period}
+- 信件總數：${s.total_emails} 封
+- 需行動：${s.filtered_in} 封 ／ 已排除：${s.filtered_out} 封
+  - 純通知/CC：${s.filter_breakdown.fyi_or_cc}
+  - 系統通知：${s.filter_breakdown.auto_notification}
+  - 廣告/電子報：${s.filter_breakdown.spam_or_newsletter}
+  - 自己寄出：${s.filter_breakdown.sent_by_me}
+
+═══ 最重要項目 ═══
+${s.top_priority.title}
+原因：${s.top_priority.reason}
+
+═══ 分類分布 ═══
+${Object.entries(s.categories_distribution)
+  .filter(([, v]) => v > 0)
+  .map(([k, v]) => `• ${k}：${v} 項`)
+  .join("\n")}
+
+═══ 目標清單（依優先度排序）═══
+${goalsList || "（無需行動的目標）"}
+
+═══ 已排除信件（供確認）═══
+${skipped || "  （無）"}
+
+---
+此報告由 GoalTracker AI 目標管理系統自動產生
+`,
+  };
+}
+
+/**
  * 取得用於除錯的 Prompt 預覽
  *
- * @param {string} emailBody - 信件內文
+ * @param {string} emailBodies - 格式化後的多封信件內容
+ * @param {string} userEmail   - 使用者的 email 地址
  * @returns {string} 格式化後的 Prompt 字串
  */
-export function getPromptPreview(emailBody) {
-  return buildPrompt(emailBody);
+export function getPromptPreview(emailBodies, userEmail) {
+  return buildPrompt(emailBodies, userEmail);
 }
