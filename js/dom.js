@@ -92,6 +92,12 @@ export const openFormBtn = document.getElementById("openFormBtn");
 /** @type {HTMLButtonElement} 匯出 JSON 按鈕 */
 export const exportBtn = document.getElementById("exportBtn");
 
+/** @type {HTMLButtonElement} 匯入備份按鈕 */
+export const importBtn = document.getElementById("importBtn");
+
+/** @type {HTMLInputElement} 匯入檔案隱藏 input */
+export const importFileInput = document.getElementById("importFileInput");
+
 // ── Settings Modal ───────────────────────────
 
 /** @type {HTMLButtonElement} 開啟設定 Modal 按鈕 */

@@ -103,11 +103,18 @@
 
       </section>
 
-      <!-- 匯出 -->
+      <!-- 匯出 / 匯入 -->
       <footer class="app__footer">
-        <button class="app__export-button" id="exportBtn" type="button">
-          匯出 JSON 備份
-        </button>
+        <div class="app__backup-actions">
+          <button class="app__export-button" id="exportBtn" type="button">
+            匯出 JSON 備份
+          </button>
+          <button class="app__import-button" id="importBtn" type="button">
+            匯入備份檔案
+          </button>
+          <input type="file" id="importFileInput" accept=".json" hidden>
+        </div>
+        <p class="app__backup-hint">🔒 資料僅儲存於本地，建議定期備份以防遺失。</p>
       </footer>
 
     </main>

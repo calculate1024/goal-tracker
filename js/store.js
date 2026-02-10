@@ -456,3 +456,62 @@ export function addCategory(name) {
 export function getExportData() {
   return JSON.stringify(state, null, 2);
 }
+
+// ── Private: Import Validation ──────────────
+
+/**
+ * 驗證匯入資料的格式是否正確
+ *
+ * @param {*} data - 解析後的 JSON 資料
+ * @returns {{ valid: boolean, error?: string }}
+ */
+function validateImportData(data) {
+  if (!data || typeof data !== "object") {
+    return { valid: false, error: "匯入資料格式錯誤：非有效的 JSON 物件" };
+  }
+  if (!Array.isArray(data.goals)) {
+    return { valid: false, error: "匯入資料格式錯誤：缺少 goals 陣列" };
+  }
+  for (const goal of data.goals) {
+    if (!goal.id || !goal.title) {
+      return { valid: false, error: "匯入資料格式錯誤：目標缺少 id 或 title" };
+    }
+  }
+  return { valid: true };
+}
+
+// ── Public: Import ──────────────────────────
+
+/**
+ * 匯入備份資料並還原狀態
+ *
+ * @param {string} jsonString - JSON 字串
+ * @param {"overwrite"|"merge"} mode - 覆蓋或合併
+ * @returns {{ ok: boolean, message: string, count: number }}
+ */
+export function importState(jsonString, mode) {
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch {
+    return { ok: false, message: "JSON 解析失敗，請確認檔案格式", count: 0 };
+  }
+
+  const validation = validateImportData(parsed);
+  if (!validation.valid) {
+    return { ok: false, message: validation.error, count: 0 };
+  }
+
+  if (mode === "overwrite") {
+    state = { ...getDefaultState(), ...parsed };
+    commit();
+    return { ok: true, message: `已覆蓋還原 ${state.goals.length} 個目標`, count: state.goals.length };
+  }
+
+  // merge：只加入 id 不重複的 goal
+  const existingIds = new Set(state.goals.map((g) => g.id));
+  const newGoals = parsed.goals.filter((g) => !existingIds.has(g.id));
+  state.goals.push(...newGoals);
+  commit();
+  return { ok: true, message: `已合併匯入 ${newGoals.length} 個新目標`, count: newGoals.length };
+}

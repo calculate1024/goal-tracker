@@ -23,6 +23,7 @@ import {
   setSortBy,
   getGoals,
   getExportData,
+  importState,
 } from "./store.js";
 import { renderAll } from "./renderer.js";
 import { saveConfig, getConfig, testGoogleConnection, authorizeGmail, isGmailAuthorized, revokeGoogleAccess } from "./settings.js";
@@ -41,6 +42,8 @@ import {
   addSubtaskBtn,
   openFormBtn,
   exportBtn,
+  importBtn,
+  importFileInput,
   filterCategoryEl,
   filterStatusEl,
   sortByEl,
@@ -225,6 +228,35 @@ function handleExport() {
   link.download = `goal-tracker-backup-${todayISO()}.json`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Import ──────────────────────────────────
+
+/**
+ * 處理備份檔案匯入
+ *
+ * @param {Event} e - file input change 事件
+ * @returns {void}
+ */
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const mode = confirm(
+      "選擇匯入方式：\n\n按「確定」→ 覆蓋現有資料\n按「取消」→ 與現有資料合併"
+    )
+      ? "overwrite"
+      : "merge";
+
+    const result = importState(reader.result, mode);
+    showToast(result.message, result.ok ? "success" : "fail");
+
+    // 重置 file input，允許重複選同一檔案
+    importFileInput.value = "";
+  };
+  reader.readAsText(file);
 }
 
 // ── Settings Modal ───────────────────────────
@@ -457,6 +489,10 @@ goalContainer.addEventListener("change", handleGoalListEvent);
 
 // Export
 exportBtn.addEventListener("click", handleExport);
+
+// Import
+importBtn.addEventListener("click", () => importFileInput.click());
+importFileInput.addEventListener("change", handleImport);
 
 // Email-to-Goal
 emailToGoalBtn.addEventListener("click", handleEmailToGoal);
