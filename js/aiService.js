@@ -1,8 +1,7 @@
 /**
  * aiService.js — AI 分析模組
  *
- * 職責：將 Email 內容透過 AI 分析，產出標準化的目標資料。
- * 目前為 Mock 實作，未來可替換為真實 AI API 呼叫（OpenAI / Gemini 等）。
+ * 職責：將 Email 內容透過 Anthropic API 分析，產出標準化的目標資料。
  *
  * 本模組只負責「分析」，不負責讀取信件或寫入 store。
  * 信件讀取由 gmailService.js 負責，流程串接由 workflow.js 負責。
@@ -55,78 +54,115 @@ function buildPrompt(emailBody) {
   ].join("\n");
 }
 
-// ── Private: Mock AI ────────────────────────
+// ── Constants ───────────────────────────────
+
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_VERSION = "2023-06-01";
+const ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929";
+
+// ── Private: API Call ───────────────────────
 
 /**
- * Mock AI 解析邏輯
+ * 將 Anthropic API 的 HTTP 錯誤轉換為使用者友善訊息
  *
- * 從 Email 內文中擷取第一行作為 title，其餘行作為 subtasks。
- * 模擬真實 AI 的回傳格式。
+ * @param {number} status - HTTP 狀態碼
+ * @param {Object} body   - 回應 JSON
+ * @returns {string} 錯誤訊息
+ */
+function formatApiError(status, body) {
+  const detail = body?.error?.message || "";
+
+  switch (status) {
+    case 401:
+      return "API Key 無效，請至設定頁面確認";
+    case 403:
+      return "API Key 權限不足：" + detail;
+    case 429:
+      return "API 額度不足或請求過於頻繁，請稍後再試";
+    case 529:
+      return "Anthropic API 暫時過載，請稍後再試";
+    default:
+      return `API 錯誤（${status}）：${detail || "未知錯誤"}`;
+  }
+}
+
+/**
+ * 從 AI 回應文字中解析 JSON，容忍 markdown 包裹
  *
- * @param {string} emailBody - 信件內文
+ * @param {string} text - AI 回應原始文字
  * @returns {ParsedGoal} 解析結果
  */
-function mockAIParse(emailBody) {
-  const lines = emailBody
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+function parseAIResponse(text) {
+  // 移除可能的 markdown code block 包裹
+  const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/, "");
 
-  const title = lines[0] || "未命名目標";
-  const subtasks = lines.slice(1);
+  const parsed = JSON.parse(cleaned);
+
+  // 基本欄位驗證
+  if (typeof parsed.title !== "string" || !Array.isArray(parsed.subtasks)) {
+    throw new Error("AI 回傳的 JSON 格式不符預期");
+  }
 
   return {
-    title,
-    subtasks: subtasks.length > 0 ? subtasks : ["開始執行"],
-    deadline: null,
+    title: parsed.title,
+    subtasks: parsed.subtasks.filter((s) => typeof s === "string" && s.length > 0),
+    deadline: typeof parsed.deadline === "string" ? parsed.deadline : null,
   };
 }
 
 // ── Public API ──────────────────────────────
 
 /**
- * 分析 Email 內容，產出標準化的目標資料
- *
- * 目前使用 Mock 實作。未來替換為真實 AI API 時，
- * 將 `buildPrompt()` 產出的 Prompt 發送至 API，
- * 並解析回傳的 JSON 為 ParsedGoal。
- *
- * 真實 API 替換範例（OpenAI）：
- * ```js
- * const response = await fetch("https://api.openai.com/v1/chat/completions", {
- *   method: "POST",
- *   headers: {
- *     "Content-Type": "application/json",
- *     "Authorization": `Bearer ${apiKey}`,
- *   },
- *   body: JSON.stringify({
- *     model: "gpt-4o-mini",
- *     messages: [{ role: "user", content: buildPrompt(emailBody) }],
- *     response_format: { type: "json_object" },
- *   }),
- * });
- * const data = await response.json();
- * return JSON.parse(data.choices[0].message.content);
- * ```
+ * 分析 Email 內容，透過 Anthropic API 產出標準化的目標資料
  *
  * @param {string} emailBody - 信件內文
  * @returns {Promise<ParsedGoal>} 標準化的目標資料
+ * @throws {Error} API Key 未設定、無效、額度不足或網路錯誤
  */
 export async function analyzeEmail(emailBody) {
-  // 取得 API Key（未來真實呼叫時使用）
   const apiKey = getConfig("aiApiKey");
+  if (!apiKey) {
+    throw new Error("尚未設定 AI API Key，請至設定頁面填寫");
+  }
 
-  // 建立 Prompt（未來真實呼叫時發送至 API）
   const prompt = buildPrompt(emailBody);
 
-  // Mock：模擬 AI 回應延遲
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  let response;
+  try {
+    response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+  } catch (err) {
+    throw new Error("無法連線至 Anthropic API：" + err.message);
+  }
 
-  // Mock：使用本地解析代替 AI API
-  // 未來替換時，改為發送 prompt 至 AI API 並解析 JSON 回傳
-  const result = mockAIParse(emailBody);
+  const body = await response.json();
 
-  return result;
+  if (!response.ok) {
+    throw new Error(formatApiError(response.status, body));
+  }
+
+  const text = body.content?.[0]?.text;
+  if (!text) {
+    throw new Error("AI 未回傳有效內容");
+  }
+
+  try {
+    return parseAIResponse(text);
+  } catch (err) {
+    throw new Error("AI 回應解析失敗：" + err.message);
+  }
 }
 
 /**
