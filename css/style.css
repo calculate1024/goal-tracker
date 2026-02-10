@@ -259,6 +259,73 @@ img {
 
 
 /* =================================================================
+   Block: email-to-goal-btn（Gmail → AI 建議目標按鈕）
+   ================================================================= */
+
+.email-to-goal-btn {
+  display: block;
+  width: 100%;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-surface);
+  background-color: var(--color-success);
+  border-radius: var(--radius-lg);
+  transition: background-color var(--transition-fast);
+}
+
+.email-to-goal-btn:hover {
+  background-color: #219a52;
+}
+
+.email-to-goal-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* =================================================================
+   Block: toast（Toast 通知）
+   ================================================================= */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-md) var(--space-2xl);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-base);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-med), visibility var(--transition-med);
+  z-index: 200;
+}
+
+.toast--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.toast--success {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.toast--fail {
+  background-color: var(--color-danger);
+  color: white;
+}
+
+.toast--info {
+  background-color: var(--color-text);
+  color: white;
+}
+
+
+/* =================================================================
    Block: filter（篩選列）— Flexbox
    ================================================================= */
 

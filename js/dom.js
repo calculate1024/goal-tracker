@@ -76,6 +76,14 @@ export const subtaskContainer = document.getElementById("subtaskContainer");
 /** @type {HTMLButtonElement} 新增子任務按鈕 */
 export const addSubtaskBtn = document.getElementById("addSubtaskBtn");
 
+// ── Email-to-Goal ───────────────────────────
+
+/** @type {HTMLButtonElement} Gmail → AI 建議目標按鈕 */
+export const emailToGoalBtn = document.getElementById("emailToGoalBtn");
+
+/** @type {HTMLElement} Toast 通知容器 */
+export const toastEl = document.getElementById("toast");
+
 // ── Action Buttons ───────────────────────────
 
 /** @type {HTMLButtonElement} 開啟新增目標 Modal 按鈕 */

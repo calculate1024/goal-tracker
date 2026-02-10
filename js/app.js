@@ -26,6 +26,7 @@ import {
 } from "./store.js";
 import { renderAll } from "./renderer.js";
 import { saveConfig, getConfig, testGoogleConnection, authorizeGmail, isGmailAuthorized } from "./settings.js";
+import { runEmailToGoal } from "./workflow.js";
 import {
   goalModal,
   modalOverlay,
@@ -44,6 +45,8 @@ import {
   filterStatusEl,
   sortByEl,
   goalContainer,
+  emailToGoalBtn,
+  toastEl,
   openSettingsBtn,
   settingsModal,
   settingsOverlay,
@@ -320,6 +323,50 @@ async function handleTestConnection() {
     (result.ok ? " settings__test-result--success" : " settings__test-result--fail");
 }
 
+// ── Toast ────────────────────────────────────
+
+/** @type {number|undefined} */
+let toastTimer;
+
+/**
+ * 顯示 Toast 通知，3 秒後自動消失
+ *
+ * @param {string} message - 顯示訊息
+ * @param {"success"|"fail"|"info"} [type="info"] - 樣式類型
+ * @returns {void}
+ */
+function showToast(message, type = "info") {
+  clearTimeout(toastTimer);
+  toastEl.textContent = message;
+  toastEl.className = `toast toast--visible toast--${type}`;
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove("toast--visible");
+  }, 3000);
+}
+
+// ── Email-to-Goal ────────────────────────────
+
+/**
+ * 處理「從 Gmail 獲取 AI 建議目標」按鈕點擊
+ *
+ * @returns {Promise<void>}
+ */
+async function handleEmailToGoal() {
+  emailToGoalBtn.textContent = "AI 正在閱讀您的信件...";
+  emailToGoalBtn.disabled = true;
+
+  try {
+    const result = await runEmailToGoal();
+    showToast(result.message, result.ok ? "success" : "fail");
+    renderAll();
+  } catch (err) {
+    showToast("發生未預期的錯誤：" + err.message, "fail");
+  } finally {
+    emailToGoalBtn.textContent = "✨ 從 Gmail 獲取 AI 建議目標";
+    emailToGoalBtn.disabled = false;
+  }
+}
+
 // ── Event Bindings ───────────────────────────
 
 // Goal Modal
@@ -357,6 +404,9 @@ goalContainer.addEventListener("change", handleGoalListEvent);
 
 // Export
 exportBtn.addEventListener("click", handleExport);
+
+// Email-to-Goal
+emailToGoalBtn.addEventListener("click", handleEmailToGoal);
 
 // ── Init ─────────────────────────────────────
 

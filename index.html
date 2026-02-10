@@ -44,6 +44,10 @@
         </div>
       </section>
 
+      <button class="email-to-goal-btn" id="emailToGoalBtn" type="button">
+        ✨ 從 Gmail 獲取 AI 建議目標
+      </button>
+
       <!-- ============================
            Block: goal-list（目標列表區）
            包含: filter, goal-form 觸發鈕, 掛載點
@@ -202,6 +206,8 @@
       </form>
     </div>
   </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- Google Identity Services（非同步載入） -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
