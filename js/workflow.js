@@ -116,11 +116,11 @@ export async function runEmailToGoal(maxEmails = 5) {
   }
 
   // Step 2: 取得使用者 email 與信件
-  let userEmail;
+  let userEmail = null;
   try {
     userEmail = await fetchUserEmail();
   } catch {
-    userEmail = "me";
+    // 無法取得 email，prompt 用 fallback，發信功能將跳過
   }
 
   let emails;
@@ -147,7 +147,7 @@ export async function runEmailToGoal(maxEmails = 5) {
 
   let analysisResult;
   try {
-    analysisResult = await analyzeEmails(emailBodies, userEmail);
+    analysisResult = await analyzeEmails(emailBodies, userEmail || "（未知使用者）");
   } catch (err) {
     return {
       ok: false,
@@ -192,7 +192,7 @@ export async function runEmailToGoal(maxEmails = 5) {
   // Step 5: 發送摘要通知郵件
   let sendWarning = "";
 
-  if (getAccessToken()) {
+  if (userEmail && getAccessToken()) {
     try {
       const summaryEmail = buildSummaryEmail(analysisResult);
       const emailResult = await sendEmail({
@@ -206,6 +206,8 @@ export async function runEmailToGoal(maxEmails = 5) {
     } catch (err) {
       sendWarning = err.message;
     }
+  } else if (!userEmail) {
+    sendWarning = "無法取得使用者 email，跳過摘要郵件發送";
   }
 
   // Step 6: 組合結果摘要

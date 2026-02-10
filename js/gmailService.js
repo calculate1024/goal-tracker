@@ -214,6 +214,9 @@ export async function fetchUserEmail() {
   }
 
   const profile = await res.json();
+  if (!profile.emailAddress) {
+    throw new Error("Gmail profile 未回傳 emailAddress");
+  }
   return profile.emailAddress;
 }
 
