@@ -25,7 +25,7 @@ import {
   getExportData,
 } from "./store.js";
 import { renderAll } from "./renderer.js";
-import { saveConfig, getConfig, testGoogleConnection, authorizeGmail, isGmailAuthorized } from "./settings.js";
+import { saveConfig, getConfig, testGoogleConnection, authorizeGmail, isGmailAuthorized, revokeGoogleAccess } from "./settings.js";
 import { runEmailToGoal } from "./workflow.js";
 import {
   goalModal,
@@ -57,7 +57,10 @@ import {
   testConnectionBtn,
   testResultEl,
   connectGmailBtn,
+  disconnectGmailBtn,
   gmailAuthStatusEl,
+  saveApiKeyBtn,
+  keyResultEl,
 } from "./dom.js";
 
 // ── Modal ────────────────────────────────────
@@ -271,11 +274,13 @@ function updateGmailAuthUI() {
   if (isGmailAuthorized()) {
     gmailAuthStatusEl.textContent = "已連結";
     gmailAuthStatusEl.className = "settings__gmail-status settings__gmail-status--success";
-    connectGmailBtn.classList.add("settings__gmail-btn--authorized");
+    connectGmailBtn.hidden = true;
+    disconnectGmailBtn.hidden = false;
   } else {
     gmailAuthStatusEl.textContent = "";
     gmailAuthStatusEl.className = "settings__gmail-status";
-    connectGmailBtn.classList.remove("settings__gmail-btn--authorized");
+    connectGmailBtn.hidden = false;
+    disconnectGmailBtn.hidden = true;
   }
 }
 
@@ -297,12 +302,11 @@ async function handleConnectGmail() {
 
   const result = await authorizeGmail(clientId);
 
-  gmailAuthStatusEl.textContent = result.message;
-  gmailAuthStatusEl.className = "settings__gmail-status" +
-    (result.ok ? " settings__gmail-status--success" : " settings__gmail-status--fail");
-
   if (result.ok) {
-    connectGmailBtn.classList.add("settings__gmail-btn--authorized");
+    updateGmailAuthUI();
+  } else {
+    gmailAuthStatusEl.textContent = result.message;
+    gmailAuthStatusEl.className = "settings__gmail-status settings__gmail-status--fail";
   }
 }
 
@@ -344,6 +348,53 @@ function showToast(message, type = "info") {
   }, 3000);
 }
 
+// ── Disconnect Gmail ─────────────────────────
+
+/**
+ * 處理解除 Gmail 綁定按鈕點擊
+ *
+ * @returns {Promise<void>}
+ */
+async function handleDisconnectGmail() {
+  if (!confirm("確定要解除 Google 帳號連結嗎？解除後需要重新授權才能使用信件分析功能。")) {
+    return;
+  }
+
+  const result = await revokeGoogleAccess();
+  updateGmailAuthUI();
+  showToast(result.message, result.ok ? "success" : "fail");
+}
+
+// ── Save API Key ─────────────────────────────
+
+/**
+ * 處理儲存新 AI API Key 按鈕點擊
+ *
+ * @returns {void}
+ */
+function handleSaveApiKey() {
+  const newKey = aiApiKeyInput.value.trim();
+
+  if (!newKey) {
+    keyResultEl.textContent = "請輸入 API Key";
+    keyResultEl.className = "settings__key-result settings__key-result--fail";
+    return;
+  }
+
+  if (!confirm("更換 AI API Key 將影響後續的自動化分析，確定要更新嗎？")) {
+    return;
+  }
+
+  saveConfig("aiApiKey", newKey);
+  keyResultEl.textContent = "金鑰已更新";
+  keyResultEl.className = "settings__key-result settings__key-result--success";
+
+  setTimeout(() => {
+    keyResultEl.textContent = "";
+    keyResultEl.className = "settings__key-result";
+  }, 2000);
+}
+
 // ── Email-to-Goal ────────────────────────────
 
 /**
@@ -381,6 +432,8 @@ settingsClose.addEventListener("click", closeSettings);
 settingsForm.addEventListener("submit", handleSettingsSave);
 testConnectionBtn.addEventListener("click", handleTestConnection);
 connectGmailBtn.addEventListener("click", handleConnectGmail);
+disconnectGmailBtn.addEventListener("click", handleDisconnectGmail);
+saveApiKeyBtn.addEventListener("click", handleSaveApiKey);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {

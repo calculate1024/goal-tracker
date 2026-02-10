@@ -124,5 +124,14 @@ export const testResultEl = document.getElementById("testResult");
 /** @type {HTMLButtonElement} 連結 Gmail 帳號按鈕 */
 export const connectGmailBtn = document.getElementById("connectGmailBtn");
 
+/** @type {HTMLButtonElement} 解除 Gmail 綁定按鈕 */
+export const disconnectGmailBtn = document.getElementById("disconnectGmailBtn");
+
 /** @type {HTMLElement} Gmail 授權狀態文字 */
 export const gmailAuthStatusEl = document.getElementById("gmailAuthStatus");
+
+/** @type {HTMLButtonElement} 儲存新金鑰按鈕 */
+export const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
+
+/** @type {HTMLElement} 金鑰操作結果文字 */
+export const keyResultEl = document.getElementById("keyResult");

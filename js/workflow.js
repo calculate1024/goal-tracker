@@ -12,10 +12,10 @@
  * @module workflow
  */
 
-import { fetchLatestEmails } from "./gmailService.js";
+import { fetchLatestEmails, sendEmail } from "./gmailService.js";
 import { analyzeEmail } from "./aiService.js";
 import { addGoal } from "./store.js";
-import { getConfig } from "./settings.js";
+import { getConfig, getAccessToken } from "./settings.js";
 
 // ── Type Definitions ────────────────────────
 
@@ -23,12 +23,13 @@ import { getConfig } from "./settings.js";
  * 單封信件的處理結果
  *
  * @typedef {Object} EmailResult
- * @property {string}  emailId   - 信件 ID
- * @property {string}  subject   - 信件主旨
- * @property {boolean} success   - 是否成功產生目標
- * @property {string}  [goalId]  - 成功時的目標 ID
- * @property {string}  [title]   - 成功時的目標名稱
- * @property {string}  [error]   - 失敗時的錯誤訊息
+ * @property {string}  emailId      - 信件 ID
+ * @property {string}  subject      - 信件主旨
+ * @property {boolean} success      - 是否成功產生目標
+ * @property {string}  [goalId]     - 成功時的目標 ID
+ * @property {string}  [title]      - 成功時的目標名稱
+ * @property {string}  [error]      - 失敗時的錯誤訊息
+ * @property {string}  [sendWarning] - 發信失敗的警告訊息
  */
 
 /**
@@ -61,6 +62,52 @@ function checkCredentials() {
     valid: missing.length === 0,
     missing,
   };
+}
+
+// ── Private: Email Notification ─────────────
+
+/**
+ * 組裝目標建立結果的摘要郵件內文
+ *
+ * @param {EmailResult[]} successResults - 成功建立的目標結果
+ * @returns {string} 純文字郵件內文
+ */
+function buildSummaryBody(successResults) {
+  const lines = [
+    "GoalTracker — AI 目標建立通知",
+    "",
+    `已從信件中成功建立 ${successResults.length} 個目標：`,
+    "",
+  ];
+
+  successResults.forEach((r, i) => {
+    lines.push(`${i + 1}. ${r.title}`);
+    lines.push(`   來源信件主旨：${r.subject}`);
+    lines.push("");
+  });
+
+  lines.push("請開啟 GoalTracker 查看完整內容並開始執行！");
+  return lines.join("\n");
+}
+
+/**
+ * 嘗試發送結果摘要郵件至使用者的 Gmail（me）
+ *
+ * 發信失敗不應中斷主流程，因此回傳結果而非拋出錯誤。
+ *
+ * @param {EmailResult[]} successResults - 成功建立的目標結果
+ * @returns {Promise<{ ok: boolean, message: string }>} 發送結果
+ */
+async function trySendSummaryEmail(successResults) {
+  try {
+    return await sendEmail({
+      to: "me",
+      subject: `[GoalTracker] 已建立 ${successResults.length} 個新目標`,
+      body: buildSummaryBody(successResults),
+    });
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
 }
 
 // ── Public API ──────────────────────────────
@@ -119,7 +166,7 @@ export async function runEmailToGoal(maxEmails = 5) {
 
       const goal = addGoal({
         title: parsed.title,
-        category: "學習",
+        category: parsed.category || "學習",
         deadline: parsed.deadline,
         subtasks: parsed.subtasks,
       });
@@ -141,13 +188,27 @@ export async function runEmailToGoal(maxEmails = 5) {
     }
   }
 
-  // Step 5: 組合結果摘要
-  const successCount = results.filter((r) => r.success).length;
+  // Step 5: 自動發送結果摘要郵件
+  const successResults = results.filter((r) => r.success);
+  let sendWarning = "";
+
+  if (successResults.length > 0 && getAccessToken()) {
+    const emailResult = await trySendSummaryEmail(successResults);
+    if (!emailResult.ok) {
+      sendWarning = emailResult.message;
+    }
+  }
+
+  // Step 6: 組合結果摘要
+  const successCount = successResults.length;
   const failCount = results.length - successCount;
 
   let message = `已處理 ${results.length} 封信件：${successCount} 個目標建立成功`;
   if (failCount > 0) {
     message += `，${failCount} 封處理失敗`;
+  }
+  if (sendWarning) {
+    message += `（郵件通知失敗：${sendWarning}）`;
   }
 
   return {

@@ -164,6 +164,36 @@ export function isGmailAuthorized() {
 }
 
 /**
+ * 撤銷 Google OAuth 授權並清除 access_token
+ *
+ * @returns {Promise<{ ok: boolean, message: string }>} 撤銷結果
+ */
+export async function revokeGoogleAccess() {
+  if (accessToken === null) {
+    return { ok: false, message: "尚未連結 Google 帳號" };
+  }
+
+  return new Promise((resolve) => {
+    google.accounts.oauth2.revoke(accessToken, () => {
+      accessToken = null;
+      resolve({ ok: true, message: "已解除 Google 帳號連結" });
+    });
+  });
+}
+
+/**
+ * 從設定中移除指定 key
+ *
+ * @param {string} key - 要移除的設定鍵名
+ * @returns {void}
+ */
+export function removeConfig(key) {
+  const settings = loadAll();
+  delete settings[key];
+  saveAll(settings);
+}
+
+/**
  * 測試 Google Client ID 是否有效
  *
  * 嘗試呼叫 Google Identity Services API 初始化，

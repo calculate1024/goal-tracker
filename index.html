@@ -189,6 +189,13 @@
         </div>
 
         <div class="settings__actions">
+          <button class="settings__save-key-btn" id="saveApiKeyBtn" type="button">
+            儲存新金鑰
+          </button>
+          <span class="settings__key-result" id="keyResult"></span>
+        </div>
+
+        <div class="settings__actions">
           <button class="settings__test-btn" id="testConnectionBtn" type="button">
             連線測試
           </button>
@@ -198,6 +205,10 @@
         <div class="settings__gmail-auth">
           <button class="settings__gmail-btn" id="connectGmailBtn" type="button">
             連結 Gmail 帳號
+          </button>
+          <button class="settings__gmail-btn settings__gmail-btn--disconnect"
+                  id="disconnectGmailBtn" type="button" hidden>
+            解除綁定
           </button>
           <span class="settings__gmail-status" id="gmailAuthStatus"></span>
         </div>
