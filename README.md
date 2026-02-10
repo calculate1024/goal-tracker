@@ -71,6 +71,7 @@ goal-tracker/
 │   ├── renderer.js         # DOM 渲染邏輯（純讀取，不改狀態）
 │   ├── dom.js              # DOM 元素快取（統一 getElementById）
 │   ├── gmailService.js     # 信件解析模組（Mock AI → addGoal）
+│   ├── settings.js         # 設定管理（API Key 存取 + 連線測試）
 │   └── utils.js            # 工具函式（日期格式化、ID 生成等）
 └── README.md               # ← 本文件
 ```
@@ -267,6 +268,7 @@ npx serve goal-tracker
 | `js/renderer.js` | 監聽 `stateChanged` → 渲染 Dashboard / 目標列表 / 進度條 | `store.js`、`utils.js`、`dom.js` |
 | `js/app.js` | 進入點：綁定所有 UI 事件 → 呼叫 store mutation → 觸發渲染迴圈 | `store.js`、`renderer.js`、`utils.js`、`dom.js` |
 | `js/gmailService.js` | 信件內文解析（Mock AI）→ 萃取 title/subtasks → 呼叫 `addGoal()` | `store.js` |
+| `js/settings.js` | 敏感設定管理（Base64 編碼存入 localStorage）+ Google 連線測試 | — |
 
 ---
 

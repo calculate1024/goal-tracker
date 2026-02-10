@@ -163,8 +163,22 @@ img {
 }
 
 .app__header {
+  position: relative;
   text-align: center;
   margin-bottom: var(--space-3xl);
+}
+
+.app__settings-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: var(--font-size-3xl);
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+}
+
+.app__settings-btn:hover {
+  color: var(--color-text);
 }
 
 .app__title {
@@ -648,6 +662,88 @@ img {
 .modal__close:hover {
   background-color: var(--color-background);
   color: var(--color-text);
+}
+
+
+/* =================================================================
+   Block: settings（設定表單）
+   ================================================================= */
+
+.settings__field {
+  margin-bottom: var(--space-lg);
+}
+
+.settings__label {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.settings__input {
+  width: 100%;
+  padding: var(--space-md);
+  font-size: var(--font-size-md);
+  font-family: monospace, var(--font-family);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.settings__input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.settings__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.settings__test-btn {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.settings__test-btn:hover {
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+}
+
+.settings__test-result {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.settings__test-result--success {
+  color: var(--color-success);
+}
+
+.settings__test-result--fail {
+  color: var(--color-danger);
+}
+
+.settings__save-btn {
+  width: 100%;
+  padding: var(--space-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.settings__save-btn:hover {
+  background-color: var(--color-primary-hover);
 }
 
 

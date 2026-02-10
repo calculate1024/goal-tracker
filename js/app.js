@@ -25,6 +25,7 @@ import {
   getExportData,
 } from "./store.js";
 import { renderAll } from "./renderer.js";
+import { saveConfig, getConfig, testGoogleConnection } from "./settings.js";
 import {
   goalModal,
   modalOverlay,
@@ -43,6 +44,15 @@ import {
   filterStatusEl,
   sortByEl,
   goalContainer,
+  openSettingsBtn,
+  settingsModal,
+  settingsOverlay,
+  settingsClose,
+  settingsForm,
+  googleClientIdInput,
+  aiApiKeyInput,
+  testConnectionBtn,
+  testResultEl,
 } from "./dom.js";
 
 // ── Modal ────────────────────────────────────
@@ -209,14 +219,79 @@ function handleExport() {
   URL.revokeObjectURL(url);
 }
 
+// ── Settings Modal ───────────────────────────
+
+/**
+ * 開啟設定 Modal，並載入已儲存的設定值
+ *
+ * @returns {void}
+ */
+function openSettings() {
+  googleClientIdInput.value = getConfig("googleClientId");
+  aiApiKeyInput.value = getConfig("aiApiKey");
+  testResultEl.textContent = "";
+  testResultEl.className = "settings__test-result";
+  settingsModal.classList.add("modal--open");
+}
+
+/**
+ * 關閉設定 Modal
+ *
+ * @returns {void}
+ */
+function closeSettings() {
+  settingsModal.classList.remove("modal--open");
+}
+
+/**
+ * 處理設定表單儲存
+ *
+ * @param {SubmitEvent} e
+ * @returns {void}
+ */
+function handleSettingsSave(e) {
+  e.preventDefault();
+  saveConfig("googleClientId", googleClientIdInput.value.trim());
+  saveConfig("aiApiKey", aiApiKeyInput.value.trim());
+  closeSettings();
+}
+
+/**
+ * 處理連線測試按鈕點擊
+ *
+ * @returns {void}
+ */
+async function handleTestConnection() {
+  const clientId = googleClientIdInput.value.trim();
+  testResultEl.textContent = "測試中…";
+  testResultEl.className = "settings__test-result";
+
+  const result = await testGoogleConnection(clientId);
+
+  testResultEl.textContent = result.message;
+  testResultEl.className = "settings__test-result" +
+    (result.ok ? " settings__test-result--success" : " settings__test-result--fail");
+}
+
 // ── Event Bindings ───────────────────────────
 
-// Modal
+// Goal Modal
 openFormBtn.addEventListener("click", () => openModal());
 modalOverlay.addEventListener("click", closeModal);
 modalClose.addEventListener("click", closeModal);
+
+// Settings Modal
+openSettingsBtn.addEventListener("click", openSettings);
+settingsOverlay.addEventListener("click", closeSettings);
+settingsClose.addEventListener("click", closeSettings);
+settingsForm.addEventListener("submit", handleSettingsSave);
+testConnectionBtn.addEventListener("click", handleTestConnection);
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
+  if (e.key === "Escape") {
+    closeModal();
+    closeSettings();
+  }
 });
 
 // Form

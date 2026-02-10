@@ -15,6 +15,9 @@
     <header class="app__header">
       <h1 class="app__title">GoalTracker</h1>
       <p class="app__subtitle">把大目標拆成小步驟，每天看見自己的進步</p>
+      <button class="app__settings-btn" id="openSettingsBtn" type="button" aria-label="設定">
+        &#9881;
+      </button>
     </header>
 
     <main class="app__main">
@@ -145,6 +148,56 @@
       </form>
     </div>
   </div>
+
+  <!-- ============================
+       Block: modal（設定彈窗）
+       Block: settings（設定表單）
+       ============================ -->
+  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal__overlay" id="settingsOverlay"></div>
+    <div class="modal__content">
+      <header class="modal__header">
+        <h2 class="modal__title" id="settingsTitle">設定</h2>
+        <button class="modal__close" id="settingsClose" type="button" aria-label="關閉">&times;</button>
+      </header>
+
+      <form class="settings" id="settingsForm">
+        <div class="settings__field">
+          <label class="settings__label" for="googleClientId">Google Client ID</label>
+          <input
+            class="settings__input"
+            id="googleClientId"
+            type="password"
+            placeholder="xxxx.apps.googleusercontent.com"
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="settings__field">
+          <label class="settings__label" for="aiApiKey">AI API Key</label>
+          <input
+            class="settings__input"
+            id="aiApiKey"
+            type="password"
+            placeholder="sk-... 或 anthropic key"
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="settings__actions">
+          <button class="settings__test-btn" id="testConnectionBtn" type="button">
+            連線測試
+          </button>
+          <span class="settings__test-result" id="testResult"></span>
+        </div>
+
+        <button class="settings__save-btn" type="submit">儲存設定</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Google Identity Services（非同步載入） -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
   <!-- 單一進入點，以 ES Module 載入 -->
   <script type="module" src="js/app.js"></script>

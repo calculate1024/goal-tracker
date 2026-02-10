@@ -83,3 +83,32 @@ export const openFormBtn = document.getElementById("openFormBtn");
 
 /** @type {HTMLButtonElement} 匯出 JSON 按鈕 */
 export const exportBtn = document.getElementById("exportBtn");
+
+// ── Settings Modal ───────────────────────────
+
+/** @type {HTMLButtonElement} 開啟設定 Modal 按鈕 */
+export const openSettingsBtn = document.getElementById("openSettingsBtn");
+
+/** @type {HTMLElement} 設定 Modal 根元素 */
+export const settingsModal = document.getElementById("settingsModal");
+
+/** @type {HTMLElement} 設定 Modal 遮罩 */
+export const settingsOverlay = document.getElementById("settingsOverlay");
+
+/** @type {HTMLButtonElement} 設定 Modal 關閉按鈕 */
+export const settingsClose = document.getElementById("settingsClose");
+
+/** @type {HTMLFormElement} 設定表單 */
+export const settingsForm = document.getElementById("settingsForm");
+
+/** @type {HTMLInputElement} Google Client ID 輸入框 */
+export const googleClientIdInput = document.getElementById("googleClientId");
+
+/** @type {HTMLInputElement} AI API Key 輸入框 */
+export const aiApiKeyInput = document.getElementById("aiApiKey");
+
+/** @type {HTMLButtonElement} 連線測試按鈕 */
+export const testConnectionBtn = document.getElementById("testConnectionBtn");
+
+/** @type {HTMLElement} 連線測試結果文字 */
+export const testResultEl = document.getElementById("testResult");
