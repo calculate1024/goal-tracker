@@ -65,7 +65,20 @@ function checkCredentials() {
   };
 }
 
-// ── Private: Email Formatting ───────────────
+// ── Private: Helpers ────────────────────────
+
+/**
+ * 從 email header 值中提取純 email 地址
+ * 支援 "Name <email>" 格式與純 email 格式
+ *
+ * @param {string} headerValue - To 或 Delivered-To header 值
+ * @returns {string|null} email 地址，無法提取時回傳 null
+ */
+function extractEmailAddress(headerValue) {
+  if (!headerValue) return null;
+  const match = headerValue.match(/<([^>]+)>/) || headerValue.match(/([^\s,]+@[^\s,]+)/);
+  return match ? match[1] : null;
+}
 
 /**
  * 將多封 Email 物件合併為 AI 可讀的文字格式
@@ -115,14 +128,7 @@ export async function runEmailToGoal(maxEmails = 5) {
     };
   }
 
-  // Step 2: 取得使用者 email 與信件
-  let userEmail = null;
-  try {
-    userEmail = await fetchUserEmail();
-  } catch {
-    // 無法取得 email，prompt 用 fallback，發信功能將跳過
-  }
-
+  // Step 2: 讀取信件，並取得使用者 email
   let emails;
   try {
     emails = await fetchLatestEmails(maxEmails);
@@ -140,6 +146,18 @@ export async function runEmailToGoal(maxEmails = 5) {
       message: "過去 24 小時內沒有可處理的信件",
       results: [],
     };
+  }
+
+  // 取得使用者 email：優先 profile API，fallback 從信件 To header 提取
+  let userEmail = null;
+  try {
+    userEmail = await fetchUserEmail();
+  } catch {
+    // profile API 失敗，從已取得的信件 headers 提取
+    for (const email of emails) {
+      userEmail = extractEmailAddress(email.to);
+      if (userEmail) break;
+    }
   }
 
   // Step 3: 合併信件並送 AI 批次分析

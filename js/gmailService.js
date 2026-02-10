@@ -23,6 +23,7 @@ const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
  * @typedef {Object} Email
  * @property {string} id      - 信件唯一 ID
  * @property {string} from    - 寄件者
+ * @property {string} to      - 收件者（Delivered-To 或 To）
  * @property {string} subject - 主旨
  * @property {string} body    - 信件內文
  * @property {string} date    - 收件日期（ISO 格式）
@@ -110,6 +111,7 @@ function parseMessage(msg) {
   return {
     id: msg.id,
     from: getHeader(headers, "From"),
+    to: getHeader(headers, "Delivered-To") || getHeader(headers, "To"),
     subject: getHeader(headers, "Subject"),
     body: extractPlainText(msg.payload),
     date: getHeader(headers, "Date"),
