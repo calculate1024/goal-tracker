@@ -172,6 +172,7 @@ goal-tracker/
 | `.filter` | 篩選列 |
 | `.modal` | 彈窗 |
 | `.category-tag` | 分類標籤 |
+| `.settings` | 設定表單 |
 
 命名範例：
 ```css
@@ -295,7 +296,7 @@ npx serve goal-tracker
 | 亮點 | 說明 |
 |------|------|
 | **單向資料流** | `使用者操作 → app.js → store.js → stateChanged 事件 → renderer.js`，嚴格禁止反向操作 |
-| **BEM 命名規範** | 8 個 Block（`dashboard`、`goal-card`、`goal-form`、`subtask`、`progress-bar`、`filter`、`modal`、`category-tag`），HTML / CSS / JS 三端一致 |
+| **BEM 命名規範** | 9 個 Block（`dashboard`、`goal-card`、`goal-form`、`subtask`、`progress-bar`、`filter`、`modal`、`category-tag`、`settings`），HTML / CSS / JS 三端一致 |
 | **零硬編碼 CSS** | 所有設計值（色彩、間距、圓角、字級、陰影、動畫、尺寸）皆透過 `:root` Custom Property 管理 |
 | **CSS Custom Property 驅動動畫** | 進度條透過 `style.setProperty("--progress", ...)` 傳值，CSS `width: var(--progress, 0%)` + `transition` 實現平滑動畫 |
 | **ES6 Module 架構** | 8 個模組各司其職，透過 `import` / `export` 組裝，單一 `<script type="module">` 進入點 |
