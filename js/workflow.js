@@ -196,7 +196,7 @@ export async function runEmailToGoal(maxEmails = 5) {
     try {
       const summaryEmail = buildSummaryEmail(analysisResult);
       const emailResult = await sendEmail({
-        to: "me",
+        to: userEmail,
         subject: summaryEmail.subject,
         body: summaryEmail.body,
       });
