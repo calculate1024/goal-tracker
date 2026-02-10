@@ -27,18 +27,18 @@ import { getAccessToken } from "./settings.js";
 // ── Public API ──────────────────────────────
 
 /**
- * 讀取前一天的 Gmail 信件
+ * 讀取過去 24 小時內的 Gmail 信件
  *
- * 僅回傳日期為昨天的信件，用於每日分析流程。
+ * 僅回傳 24 小時內收到的信件，避免處理過時或過量的資訊。
  * 目前尚未串接真實 Gmail API，回傳空陣列。
  * 未來替換為真實 Gmail API 呼叫：
- * `gapi.client.gmail.users.messages.list({ q: "after:YYYY/MM/DD before:YYYY/MM/DD" })`
+ * `gapi.client.gmail.users.messages.list({ q: "newer_than:1d" })`
  *
  * @param {number} [maxResults=5] - 最多回傳幾封信件
- * @returns {Promise<Email[]>} 信件陣列（僅包含前一天的信件）
+ * @returns {Promise<Email[]>} 信件陣列（僅包含過去 24 小時內的信件）
  */
 export async function fetchLatestEmails(maxResults = 5) {
-  // TODO: 串接真實 Gmail API，使用 yesterdayISO() 作為查詢日期範圍
+  // TODO: 串接真實 Gmail API，使用 newer_than:1d 查詢過去 24 小時的信件
   return [];
 }
 
