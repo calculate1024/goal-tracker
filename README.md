@@ -285,3 +285,87 @@ npx serve goal-tracker
 | **Custom Event 通訊** | `store.js` 透過 `window.dispatchEvent(new CustomEvent("stateChanged"))` 通知渲染層，模組間零耦合 |
 | **完整 JSDoc 標註** | 所有 exported function 皆附 `@param` / `@returns`，型別定義使用 `@typedef` |
 | **零依賴** | 不引入任何第三方套件，100% Vanilla JavaScript |
+
+---
+
+## 8. 部署指南（非技術人員版）
+
+> 這份指南寫給不熟悉程式的朋友，只要按照步驟操作，就能把 GoalTracker 跑起來。
+
+### 8.1 你需要準備什麼？
+
+| 項目 | 說明 | 怎麼取得 |
+|------|------|----------|
+| 一台電腦 | Windows、Mac 或 Linux 皆可 | — |
+| 瀏覽器 | Chrome、Edge、Firefox 任一皆可 | 電腦通常已內建 |
+| Python | 用來啟動本地伺服器 | 到 [python.org](https://www.python.org/downloads/) 下載安裝，安裝時勾選「Add to PATH」 |
+
+> **小提示：** 不確定有沒有裝 Python？打開終端機（Windows 按 `Win + R` 輸入 `cmd`），輸入 `python --version`，有看到版本號就代表已安裝。
+
+### 8.2 下載專案
+
+**方法 A：直接下載（最簡單）**
+
+1. 用瀏覽器打開 https://github.com/calculate1024/goal-tracker
+2. 點綠色的 **「Code」** 按鈕 → 選 **「Download ZIP」**
+3. 把下載的 ZIP 檔解壓縮到任意資料夾（例如桌面）
+
+**方法 B：用 Git 下載**
+
+打開終端機，輸入：
+
+```
+git clone https://github.com/calculate1024/goal-tracker.git
+```
+
+### 8.3 啟動應用程式
+
+1. 打開終端機（Windows: `cmd`；Mac: `終端機`）
+2. 用 `cd` 指令進入專案資料夾，例如：
+   ```
+   cd Desktop/goal-tracker
+   ```
+3. 輸入以下指令啟動伺服器：
+   ```
+   python -m http.server 8080
+   ```
+4. 看到 `Serving HTTP on 0.0.0.0 port 8080` 就代表成功了
+5. 打開瀏覽器，在網址列輸入：
+   ```
+   http://localhost:8080
+   ```
+6. 你應該會看到 GoalTracker 的畫面！
+
+> **注意：** 請不要關閉終端機視窗，關閉的話伺服器就會停止。想停止時按 `Ctrl + C`。
+
+### 8.4 開始使用
+
+| 操作 | 怎麼做 |
+|------|--------|
+| 新增目標 | 點「**+ 新增目標**」按鈕，填寫名稱、分類、截止日和子任務後按「儲存」 |
+| 勾選子任務 | 打勾 checkbox，進度條會自動更新 |
+| 完成目標 | 點目標卡片右上角的 **✓** 按鈕 |
+| 編輯目標 | 點 **✎** 按鈕 |
+| 刪除目標 | 點 **✕** 按鈕，確認後刪除 |
+| 篩選 | 用頂部的下拉選單依分類或狀態篩選 |
+| 排序 | 用右側下拉選單依截止日、建立日或進度排序 |
+| 備份資料 | 點頁面底部「**匯出 JSON 備份**」，會下載一個 `.json` 檔案 |
+| 設定 | 點右上角 **⚙** 齒輪圖示，可設定 Google Client ID 和 AI API Key |
+
+### 8.5 資料存在哪裡？
+
+你的所有目標資料都存在**瀏覽器的 localStorage** 裡，也就是存在你自己的電腦上。
+
+- **不會上傳到任何伺服器** — 你的資料完全屬於你
+- **換瀏覽器或清除瀏覽器資料會遺失** — 建議定期用「匯出 JSON 備份」保存
+- **不同電腦之間不會同步** — 這是單機版應用程式
+
+### 8.6 常見問題
+
+| 問題 | 解決方法 |
+|------|----------|
+| 畫面空白，什麼都沒出現 | 確認你是用 `python -m http.server` 啟動，而不是直接雙擊 `index.html` 開啟 |
+| 終端機顯示「python 不是內部或外部命令」 | Python 沒安裝或沒加入 PATH，請重新安裝並勾選「Add to PATH」 |
+| Port 8080 已被佔用 | 把指令改成 `python -m http.server 9090`，然後瀏覽器改開 `http://localhost:9090` |
+| 之前的目標不見了 | 可能清除了瀏覽器資料，未來建議定期匯出 JSON 備份 |
+| 齒輪設定裡的連線測試失敗 | 這是正常的，需要先取得有效的 Google Client ID 才能通過測試 |
