@@ -25,7 +25,7 @@ import {
   getExportData,
 } from "./store.js";
 import { renderAll } from "./renderer.js";
-import { saveConfig, getConfig, testGoogleConnection } from "./settings.js";
+import { saveConfig, getConfig, testGoogleConnection, authorizeGmail, isGmailAuthorized } from "./settings.js";
 import {
   goalModal,
   modalOverlay,
@@ -53,6 +53,8 @@ import {
   aiApiKeyInput,
   testConnectionBtn,
   testResultEl,
+  connectGmailBtn,
+  gmailAuthStatusEl,
 } from "./dom.js";
 
 // ── Modal ────────────────────────────────────
@@ -231,6 +233,7 @@ function openSettings() {
   aiApiKeyInput.value = getConfig("aiApiKey");
   testResultEl.textContent = "";
   testResultEl.className = "settings__test-result";
+  updateGmailAuthUI();
   settingsModal.classList.add("modal--open");
 }
 
@@ -254,6 +257,50 @@ function handleSettingsSave(e) {
   saveConfig("googleClientId", googleClientIdInput.value.trim());
   saveConfig("aiApiKey", aiApiKeyInput.value.trim());
   closeSettings();
+}
+
+/**
+ * 更新 Gmail 授權狀態 UI
+ *
+ * @returns {void}
+ */
+function updateGmailAuthUI() {
+  if (isGmailAuthorized()) {
+    gmailAuthStatusEl.textContent = "已連結";
+    gmailAuthStatusEl.className = "settings__gmail-status settings__gmail-status--success";
+    connectGmailBtn.classList.add("settings__gmail-btn--authorized");
+  } else {
+    gmailAuthStatusEl.textContent = "";
+    gmailAuthStatusEl.className = "settings__gmail-status";
+    connectGmailBtn.classList.remove("settings__gmail-btn--authorized");
+  }
+}
+
+/**
+ * 處理連結 Gmail 帳號按鈕點擊
+ *
+ * @returns {void}
+ */
+async function handleConnectGmail() {
+  const clientId = googleClientIdInput.value.trim();
+  if (!clientId) {
+    gmailAuthStatusEl.textContent = "請先填入 Google Client ID";
+    gmailAuthStatusEl.className = "settings__gmail-status settings__gmail-status--fail";
+    return;
+  }
+
+  gmailAuthStatusEl.textContent = "授權中…";
+  gmailAuthStatusEl.className = "settings__gmail-status";
+
+  const result = await authorizeGmail(clientId);
+
+  gmailAuthStatusEl.textContent = result.message;
+  gmailAuthStatusEl.className = "settings__gmail-status" +
+    (result.ok ? " settings__gmail-status--success" : " settings__gmail-status--fail");
+
+  if (result.ok) {
+    connectGmailBtn.classList.add("settings__gmail-btn--authorized");
+  }
 }
 
 /**
@@ -286,6 +333,7 @@ settingsOverlay.addEventListener("click", closeSettings);
 settingsClose.addEventListener("click", closeSettings);
 settingsForm.addEventListener("submit", handleSettingsSave);
 testConnectionBtn.addEventListener("click", handleTestConnection);
+connectGmailBtn.addEventListener("click", handleConnectGmail);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {

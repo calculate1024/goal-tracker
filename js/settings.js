@@ -17,6 +17,11 @@
 /** @type {string} localStorage 的 key */
 const SETTINGS_KEY = "goal-tracker-settings";
 
+// ── OAuth Token（僅存於記憶體）────────────────
+
+/** @type {string|null} access_token（僅存於記憶體，不存 localStorage） */
+let accessToken = null;
+
 // ── Private: Persistence ─────────────────────
 
 /**
@@ -95,6 +100,67 @@ export function getConfig(key) {
   const settings = loadAll();
   const encoded = settings[key];
   return encoded ? decode(encoded) : "";
+}
+
+/**
+ * 透過 GIS Token Client 取得 Gmail OAuth access_token
+ *
+ * @param {string} clientId - Google Client ID
+ * @returns {Promise<{ ok: boolean, message: string }>} 授權結果
+ */
+export function authorizeGmail(clientId) {
+  return new Promise((resolve) => {
+    if (!clientId || !clientId.includes(".apps.googleusercontent.com")) {
+      resolve({ ok: false, message: "請先填入有效的 Google Client ID" });
+      return;
+    }
+
+    if (
+      typeof google === "undefined" ||
+      !google.accounts ||
+      !google.accounts.oauth2
+    ) {
+      resolve({ ok: false, message: "Google Identity Services 尚未載入" });
+      return;
+    }
+
+    try {
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "https://www.googleapis.com/auth/gmail.readonly",
+        callback: (response) => {
+          if (response.error) {
+            accessToken = null;
+            resolve({ ok: false, message: "授權失敗：" + response.error });
+            return;
+          }
+          accessToken = response.access_token;
+          resolve({ ok: true, message: "已連結 Gmail 帳號" });
+        },
+      });
+      tokenClient.requestAccessToken();
+    } catch (err) {
+      resolve({ ok: false, message: "授權初始化失敗：" + err.message });
+    }
+  });
+}
+
+/**
+ * 取得目前的 access_token
+ *
+ * @returns {string|null} access_token 或 null
+ */
+export function getAccessToken() {
+  return accessToken;
+}
+
+/**
+ * 檢查是否已授權 Gmail
+ *
+ * @returns {boolean}
+ */
+export function isGmailAuthorized() {
+  return accessToken !== null;
 }
 
 /**

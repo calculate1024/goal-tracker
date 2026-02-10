@@ -732,6 +732,45 @@ img {
   color: var(--color-danger);
 }
 
+.settings__gmail-auth {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.settings__gmail-btn {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--font-size-base);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.settings__gmail-btn:hover {
+  color: var(--color-surface);
+  background-color: var(--color-success);
+}
+
+.settings__gmail-btn--authorized {
+  opacity: var(--opacity-completed);
+  pointer-events: none;
+}
+
+.settings__gmail-status {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.settings__gmail-status--success {
+  color: var(--color-success);
+}
+
+.settings__gmail-status--fail {
+  color: var(--color-danger);
+}
+
 .settings__save-btn {
   width: 100%;
   padding: var(--space-md);

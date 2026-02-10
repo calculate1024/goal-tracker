@@ -112,3 +112,9 @@ export const testConnectionBtn = document.getElementById("testConnectionBtn");
 
 /** @type {HTMLElement} 連線測試結果文字 */
 export const testResultEl = document.getElementById("testResult");
+
+/** @type {HTMLButtonElement} 連結 Gmail 帳號按鈕 */
+export const connectGmailBtn = document.getElementById("connectGmailBtn");
+
+/** @type {HTMLElement} Gmail 授權狀態文字 */
+export const gmailAuthStatusEl = document.getElementById("gmailAuthStatus");
