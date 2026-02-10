@@ -70,7 +70,9 @@ goal-tracker/
 │   ├── store.js            # 狀態管理（SSOT）與 LocalStorage
 │   ├── renderer.js         # DOM 渲染邏輯（純讀取，不改狀態）
 │   ├── dom.js              # DOM 元素快取（統一 getElementById）
-│   ├── gmailService.js     # 信件解析模組（Mock AI → addGoal）
+│   ├── gmailService.js     # Gmail 信件讀取模組（Mock）
+│   ├── aiService.js        # AI 分析模組（Email → 標準目標 JSON）
+│   ├── workflow.js          # 流程串接（Gmail → AI → Store）
 │   ├── settings.js         # 設定管理（API Key 存取 + 連線測試）
 │   └── utils.js            # 工具函式（日期格式化、ID 生成等）
 └── README.md               # ← 本文件
@@ -129,12 +131,26 @@ goal-tracker/
     │ - CRUD    │◄─┤ - DOM 操作  │
     │ - save()  │  │            │
     │ - load()  │  └───┬────────┘
-    └───────────┘      │
-         ┌─────────────┤
-    ┌────▼─────┐  ┌────▼─────┐
-    │ utils.js │  │  dom.js  │  統一 DOM 元素快取
-    │ 日期、ID │  │ getElementById │
-    └──────────┘  └──────────┘
+    └─────▲─────┘      │
+          │      ┌─────────────┤
+          │ ┌────▼─────┐  ┌────▼─────┐
+          │ │ utils.js │  │  dom.js  │  統一 DOM 元素快取
+          │ │ 日期、ID │  │ getElementById │
+          │ └──────────┘  └──────────┘
+          │
+   ┌──────┴──────────────────────────┐
+   │          workflow.js            │  主控制器
+   │  Gmail → AI 分析 → addGoal()   │
+   └──┬──────────────┬──────────────┘
+      │              │
+┌─────▼──────┐ ┌─────▼──────┐
+│gmailService│ │ aiService  │  AI 分析
+│ 信件讀取    │ │ Email→Goal │
+└────────────┘ └─────┬──────┘
+                     │
+               ┌─────▼──────┐
+               │ settings   │  API Key 管理
+               └────────────┘
 ```
 
 **資料流方向（單向）：**
@@ -267,7 +283,9 @@ npx serve goal-tracker
 | `js/store.js` | Single Source of Truth；狀態 CRUD + localStorage 持久化 + `stateChanged` 事件 | `utils.js` |
 | `js/renderer.js` | 監聽 `stateChanged` → 渲染 Dashboard / 目標列表 / 進度條 | `store.js`、`utils.js`、`dom.js` |
 | `js/app.js` | 進入點：綁定所有 UI 事件 → 呼叫 store mutation → 觸發渲染迴圈 | `store.js`、`renderer.js`、`utils.js`、`dom.js` |
-| `js/gmailService.js` | 信件內文解析（Mock AI）→ 萃取 title/subtasks → 呼叫 `addGoal()` | `store.js` |
+| `js/gmailService.js` | Gmail 信件讀取（Mock）：`fetchLatestEmails()`、`fetchEmailById()` | — |
+| `js/aiService.js` | AI 分析：格式化 Prompt → 解析 Email → 回傳標準 `{title, subtasks, deadline}` | `settings.js` |
+| `js/workflow.js` | 流程串接主控制器：檢查設定 → 讀取信件 → AI 分析 → `addGoal()` 寫入 | `gmailService.js`、`aiService.js`、`store.js`、`settings.js` |
 | `js/settings.js` | 敏感設定管理（Base64 編碼存入 localStorage）+ Google 連線測試 | — |
 
 ---
@@ -280,7 +298,7 @@ npx serve goal-tracker
 | **BEM 命名規範** | 8 個 Block（`dashboard`、`goal-card`、`goal-form`、`subtask`、`progress-bar`、`filter`、`modal`、`category-tag`），HTML / CSS / JS 三端一致 |
 | **零硬編碼 CSS** | 所有設計值（色彩、間距、圓角、字級、陰影、動畫、尺寸）皆透過 `:root` Custom Property 管理 |
 | **CSS Custom Property 驅動動畫** | 進度條透過 `style.setProperty("--progress", ...)` 傳值，CSS `width: var(--progress, 0%)` + `transition` 實現平滑動畫 |
-| **ES6 Module 架構** | 5 個模組各司其職，透過 `import` / `export` 組裝，單一 `<script type="module">` 進入點 |
+| **ES6 Module 架構** | 8 個模組各司其職，透過 `import` / `export` 組裝，單一 `<script type="module">` 進入點 |
 | **統一 DOM 快取** | `dom.js` 集中管理所有 `getElementById`，消除跨模組重複查詢 |
 | **Custom Event 通訊** | `store.js` 透過 `window.dispatchEvent(new CustomEvent("stateChanged"))` 通知渲染層，模組間零耦合 |
 | **完整 JSDoc 標註** | 所有 exported function 皆附 `@param` / `@returns`，型別定義使用 `@typedef` |
