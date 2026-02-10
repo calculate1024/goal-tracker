@@ -92,6 +92,7 @@ function formatEmailsForPrompt(emails) {
       (email, i) =>
         `=== Email ${i + 1}/${emails.length} ===\n` +
         `From: ${email.from}\n` +
+        `To: ${email.to}\n` +
         `Subject: ${email.subject}\n` +
         `Date: ${email.date}\n` +
         `---\n` +
