@@ -22,6 +22,9 @@ const SETTINGS_KEY = "goal-tracker-settings";
 /** @type {string|null} access_token（僅存於記憶體，不存 localStorage） */
 let accessToken = null;
 
+/** @type {number|null} token 過期時間戳（ms） */
+let tokenExpiresAt = null;
+
 // ── Private: Persistence ─────────────────────
 
 /**
@@ -131,10 +134,12 @@ export function authorizeGmail(clientId) {
         callback: (response) => {
           if (response.error) {
             accessToken = null;
+            tokenExpiresAt = null;
             resolve({ ok: false, message: "授權失敗：" + response.error });
             return;
           }
           accessToken = response.access_token;
+          tokenExpiresAt = Date.now() + (response.expires_in || 3600) * 1000;
           resolve({ ok: true, message: "已連結 Gmail 帳號" });
         },
       });
@@ -151,6 +156,10 @@ export function authorizeGmail(clientId) {
  * @returns {string|null} access_token 或 null
  */
 export function getAccessToken() {
+  if (accessToken && tokenExpiresAt && Date.now() >= tokenExpiresAt) {
+    accessToken = null;
+    tokenExpiresAt = null;
+  }
   return accessToken;
 }
 
@@ -160,7 +169,7 @@ export function getAccessToken() {
  * @returns {boolean}
  */
 export function isGmailAuthorized() {
-  return accessToken !== null;
+  return getAccessToken() !== null;
 }
 
 /**
@@ -176,6 +185,7 @@ export async function revokeGoogleAccess() {
   return new Promise((resolve) => {
     google.accounts.oauth2.revoke(accessToken, () => {
       accessToken = null;
+      tokenExpiresAt = null;
       resolve({ ok: true, message: "已解除 Google 帳號連結" });
     });
   });
