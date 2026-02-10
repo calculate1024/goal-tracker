@@ -126,10 +126,10 @@ function parseMessage(msg) {
  * 僅回傳 24 小時內收到的信件，避免處理過時或過量的資訊。
  * 使用 Gmail REST API：先 list 取得 ID，再逐筆 get 完整內容。
  *
- * @param {number} [maxResults=5] - 最多回傳幾封信件
+ * @param {number} [maxResults=100] - 最多回傳幾封信件（Gmail API 上限 500）
  * @returns {Promise<Email[]>} 信件陣列（僅包含過去 24 小時內的信件）
  */
-export async function fetchLatestEmails(maxResults = 5) {
+export async function fetchLatestEmails(maxResults = 100) {
   const token = getAccessToken();
   if (!token) {
     throw new Error("尚未授權 Gmail，請先連結 Google 帳號");

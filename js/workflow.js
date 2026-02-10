@@ -115,10 +115,10 @@ function formatEmailsForPrompt(emails) {
  * 6. 發送摘要通知郵件
  * 7. 回傳處理結果摘要
  *
- * @param {number} [maxEmails=5] - 最多處理幾封信件
+ * @param {number} [maxEmails=100] - 最多處理幾封信件
  * @returns {Promise<WorkflowResult>} 工作流程執行結果
  */
-export async function runEmailToGoal(maxEmails = 5) {
+export async function runEmailToGoal(maxEmails = 100) {
   // Step 1: 檢查設定
   const credentials = checkCredentials();
   if (!credentials.valid) {
