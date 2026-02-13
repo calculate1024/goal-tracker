@@ -39,6 +39,8 @@ const DEFAULT_CATEGORIES = ["核心專案", "日常營運", "專業成長", "外
  * @property {string}     createdAt - 建立日期（YYYY-MM-DD）
  * @property {number}     progress  - 進度百分比（0 ~ 100），由 calculateProgress 自動計算
  * @property {Subtask[]}  subtasks  - 子任務陣列
+ * @property {string|null} sourceEmailId - 來源 Gmail 信件 ID（僅作索引，用於去重）
+ * @property {string|null} sourceLink    - Gmail 信件網頁連結
  */
 
 /**
@@ -65,17 +67,29 @@ function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && Array.isArray(saved.goals)) {
-      // 確保舊資料也有 progress 欄位
-      saved.goals.forEach((goal) => {
-        if (typeof goal.progress !== "number") {
-          goal.progress = calcProgressValue(goal.subtasks);
-        }
-      });
+      saved.goals.forEach(migrateGoal);
       return { ...getDefaultState(), ...saved, categories: [...DEFAULT_CATEGORIES] };
     }
     return getDefaultState();
   } catch {
     return getDefaultState();
+  }
+}
+
+/**
+ * 將舊版 Goal 物件遷移至最新結構（原地修改）
+ *
+ * @param {Goal} goal - 待遷移的 Goal 物件
+ */
+function migrateGoal(goal) {
+  if (typeof goal.progress !== "number") {
+    goal.progress = calcProgressValue(goal.subtasks);
+  }
+  if (goal.sourceEmailId === undefined) {
+    goal.sourceEmailId = null;
+  }
+  if (goal.sourceLink === undefined) {
+    goal.sourceLink = null;
   }
 }
 
@@ -270,6 +284,21 @@ export function getStats() {
   };
 }
 
+/**
+ * 取得所有已處理過的 Email ID 集合（用於去重）
+ *
+ * @returns {Set<string>} 已處理的 Gmail message ID 集合
+ */
+export function getProcessedEmailIds() {
+  const ids = new Set();
+  for (const goal of state.goals) {
+    if (goal.sourceEmailId) {
+      ids.add(goal.sourceEmailId);
+    }
+  }
+  return ids;
+}
+
 // ── Public: Goal CRUD ────────────────────────
 
 /**
@@ -282,6 +311,8 @@ export function getStats() {
  * @param {string}        goalData.category - 分類標籤（必填）
  * @param {string|null}   [goalData.deadline=null] - 截止日期（YYYY-MM-DD）
  * @param {string[]}      [goalData.subtasks=[]]   - 子任務文字陣列
+ * @param {string|null}   [goalData.sourceEmailId=null] - 來源 Gmail 信件 ID
+ * @param {string|null}   [goalData.sourceLink=null]    - Gmail 信件網頁連結
  * @returns {Goal} 新建立的 Goal 物件
  *
  * @example
@@ -292,7 +323,7 @@ export function getStats() {
  *   subtasks: ["完成 DOM 練習", "完成 Event 練習"]
  * });
  */
-export function addGoal({ title, category, deadline = null, subtasks = [] }) {
+export function addGoal({ title, category, deadline = null, subtasks = [], sourceEmailId = null, sourceLink = null }) {
   /** @type {Goal} */
   const goal = {
     id: generateId("g"),
@@ -307,6 +338,8 @@ export function addGoal({ title, category, deadline = null, subtasks = [] }) {
       text,
       completed: false,
     })),
+    sourceEmailId,
+    sourceLink,
   };
 
   state.goals.push(goal);
@@ -501,6 +534,9 @@ export function importState(jsonString, mode) {
   if (!validation.valid) {
     return { ok: false, message: validation.error, count: 0 };
   }
+
+  // 遷移匯入的 goals 至最新結構
+  parsed.goals.forEach(migrateGoal);
 
   if (mode === "overwrite") {
     state = { ...getDefaultState(), ...parsed };

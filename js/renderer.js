@@ -187,6 +187,22 @@ function createGoalCard(goal) {
     meta.appendChild(deadlineSpan);
   }
 
+  // ── Source link（來源郵件連結）──
+  let sourceEl = null;
+  if (goal.sourceLink && /^https:\/\//.test(goal.sourceLink)) {
+    sourceEl = document.createElement("div");
+    sourceEl.className = "goal-card__source";
+
+    const sourceLink = document.createElement("a");
+    sourceLink.className = "goal-card__source-link";
+    sourceLink.href = goal.sourceLink;
+    sourceLink.target = "_blank";
+    sourceLink.rel = "noopener noreferrer";
+    sourceLink.textContent = "\uD83D\uDD17 查看原始郵件";
+
+    sourceEl.appendChild(sourceLink);
+  }
+
   // ── Progress bar（透過 CSS custom property 驅動動畫）──
   const progressBar = document.createElement("div");
   progressBar.className = "progress-bar";
@@ -231,7 +247,9 @@ function createGoalCard(goal) {
   });
 
   // ── Assemble card ──
-  card.append(header, meta, progressBar, subtaskList);
+  card.append(header, meta);
+  if (sourceEl) card.append(sourceEl);
+  card.append(progressBar, subtaskList);
   return card;
 }
 

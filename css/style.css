@@ -494,6 +494,26 @@ img {
   color: var(--color-danger);
 }
 
+/* ── Element: source（來源郵件連結）── */
+.goal-card__source {
+  margin-bottom: var(--space-sm);
+}
+
+.goal-card__source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.goal-card__source-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
 
 /* =================================================================
    Block: category-tag（分類標籤）

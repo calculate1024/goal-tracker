@@ -14,7 +14,7 @@
 
 import { fetchLatestEmails, fetchUserEmail, sendEmail } from "./gmailService.js";
 import { analyzeEmails, buildSummaryEmail } from "./aiService.js";
-import { addGoal } from "./store.js";
+import { addGoal, getProcessedEmailIds } from "./store.js";
 import { getConfig, getAccessToken } from "./settings.js";
 
 // ── Type Definitions ────────────────────────
@@ -101,6 +101,68 @@ function formatEmailsForPrompt(emails) {
     .join("\n\n");
 }
 
+/**
+ * 產生 Gmail 信件的網頁連結
+ *
+ * @param {string} messageId - Gmail message ID
+ * @returns {string} Gmail 網頁連結
+ */
+function generateGmailLink(messageId) {
+  return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
+}
+
+/**
+ * 建立 normalized subject → Email 的反向索引
+ *
+ * @param {import('./gmailService.js').Email[]} emails - 信件陣列
+ * @returns {Map<string, import('./gmailService.js').Email>} subject → Email 對照表
+ */
+function buildEmailSubjectIndex(emails) {
+  const index = new Map();
+  for (const email of emails) {
+    if (email.subject) {
+      const normalized = email.subject.trim().toLowerCase();
+      index.set(normalized, email);
+    }
+  }
+  return index;
+}
+
+/**
+ * 透過 source_subject 將解析後的目標匹配回原始 Email
+ *
+ * 先嘗試精確匹配（normalized），再嘗試模糊匹配（includes）。
+ *
+ * @param {Object} parsedGoal - AI 分析產出的單一目標（含 source_subject）
+ * @param {Map<string, import('./gmailService.js').Email>} subjectIndex - subject → Email 對照表
+ * @returns {import('./gmailService.js').Email|null} 匹配到的 Email，或 null
+ */
+function matchGoalToEmail(parsedGoal, subjectIndex) {
+  if (!parsedGoal.source_subject) return null;
+
+  const needle = parsedGoal.source_subject.trim().toLowerCase();
+
+  // 精確匹配
+  if (subjectIndex.has(needle)) {
+    return subjectIndex.get(needle);
+  }
+
+  // 模糊匹配：雙方長度須足夠，且較短者長度至少為較長者的一半
+  if (needle.length < 4) return null;
+
+  for (const [subject, email] of subjectIndex) {
+    if (subject.length < 4) continue;
+    const shorter = Math.min(needle.length, subject.length);
+    const longer = Math.max(needle.length, subject.length);
+    if (shorter / longer < 0.5) continue;
+    if (subject.includes(needle) || needle.includes(subject)) {
+      return email;
+    }
+  }
+
+  return null;
+}
+
 // ── Public API ──────────────────────────────
 
 /**
@@ -149,20 +211,34 @@ export async function runEmailToGoal(maxEmails = 100) {
     };
   }
 
+  // Step 2.5: 去重 — 過濾已處理過的信件
+  const processedIds = getProcessedEmailIds();
+  const totalFetched = emails.length;
+  const newEmails = emails.filter((e) => !processedIds.has(e.id));
+  const skippedCount = totalFetched - newEmails.length;
+
+  if (newEmails.length === 0) {
+    return {
+      ok: true,
+      message: `過去 24 小時的 ${totalFetched} 封信件皆已處理過，無需重複分析`,
+      results: [],
+    };
+  }
+
   // 取得使用者 email：優先 profile API，fallback 從信件 To header 提取
   let userEmail = null;
   try {
     userEmail = await fetchUserEmail();
   } catch {
     // profile API 失敗，從已取得的信件 headers 提取
-    for (const email of emails) {
+    for (const email of newEmails) {
       userEmail = extractEmailAddress(email.to);
       if (userEmail) break;
     }
   }
 
   // Step 3: 合併信件並送 AI 批次分析
-  const emailBodies = formatEmailsForPrompt(emails);
+  const emailBodies = formatEmailsForPrompt(newEmails);
 
   let analysisResult;
   try {
@@ -178,14 +254,22 @@ export async function runEmailToGoal(maxEmails = 100) {
   // Step 4: 將篩選後的目標寫入 store
   /** @type {GoalResult[]} */
   const results = [];
+  const subjectIndex = buildEmailSubjectIndex(newEmails);
 
   for (const parsedGoal of analysisResult.goals) {
     try {
+      // 透過 source_subject 匹配回原始 email，取得 ID 與連結
+      const matchedEmail = matchGoalToEmail(parsedGoal, subjectIndex);
+      const sourceEmailId = matchedEmail ? matchedEmail.id : null;
+      const sourceLink = matchedEmail ? generateGmailLink(matchedEmail.id) : null;
+
       const goal = addGoal({
         title: parsedGoal.title,
         category: parsedGoal.category || "學習",
         deadline: parsedGoal.deadline,
         subtasks: parsedGoal.subtasks,
+        sourceEmailId,
+        sourceLink,
       });
 
       results.push({
@@ -240,6 +324,9 @@ export async function runEmailToGoal(maxEmails = 100) {
   }
   if (failCount > 0) {
     message += `，${failCount} 個目標寫入失敗`;
+  }
+  if (skippedCount > 0) {
+    message += `（另有 ${skippedCount} 封已處理過，已跳過）`;
   }
   if (sendWarning) {
     message += `（郵件通知失敗：${sendWarning}）`;
