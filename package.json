@@ -1,0 +1,25 @@
+{
+  "name": "goal-tracker",
+  "version": "1.0.0",
+  "description": "> 自動分析過去 24 小時的 Gmail 信件，運用 AI 萃取可執行目標，幫你把大目標拆成小步驟，每天看見自己的進步。",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/calculate1024/goal-tracker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/calculate1024/goal-tracker/issues"
+  },
+  "homepage": "https://github.com/calculate1024/goal-tracker#readme",
+  "devDependencies": {
+    "jsdom": "^28.0.0",
+    "vitest": "^4.0.18"
+  }
+}

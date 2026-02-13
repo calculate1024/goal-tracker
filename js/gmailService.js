@@ -153,9 +153,25 @@ export async function fetchLatestEmails(maxResults = 100) {
 
   if (messageIds.length === 0) return [];
 
-  // Step 2: 逐筆取得完整信件內容
+  // Step 1.5: 從 localStorage 讀取已處理的 Email ID（去重）
+  const GOAL_STORAGE_KEY = "goal-tracker-data";
+  let processedEmailIds = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY));
+    if (saved && Array.isArray(saved.goals)) {
+      processedEmailIds = saved.goals
+        .map((g) => g.sourceEmailId)
+        .filter((id) => id != null);
+    }
+  } catch { /* ignore parse errors */ }
+
+  // Step 2: 逐筆取得完整信件內容（跳過已處理的信件）
   const emails = await Promise.all(
     messageIds.map(async ({ id }) => {
+      if (processedEmailIds.some((eid) => eid === id)) {
+        console.log(`[gmailService] 跳過已處理的信件: ${id}`);
+        return null;
+      }
       const msgRes = await fetch(`${GMAIL_API}/messages/${id}?format=full`, {
         headers: { Authorization: `Bearer ${token}` },
       });

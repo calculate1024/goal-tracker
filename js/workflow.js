@@ -91,6 +91,7 @@ function formatEmailsForPrompt(emails) {
     .map(
       (email, i) =>
         `=== Email ${i + 1}/${emails.length} ===\n` +
+        `Email-ID: ${email.id}\n` +
         `From: ${email.from}\n` +
         `To: ${email.to}\n` +
         `Subject: ${email.subject}\n` +
@@ -162,6 +163,9 @@ function matchGoalToEmail(parsedGoal, subjectIndex) {
 
   return null;
 }
+
+// ── Exported Helpers (for testing) ───────────
+export { generateGmailLink, buildEmailSubjectIndex, matchGoalToEmail, formatEmailsForPrompt };
 
 // ── Public API ──────────────────────────────
 
@@ -255,11 +259,17 @@ export async function runEmailToGoal(maxEmails = 100) {
   /** @type {GoalResult[]} */
   const results = [];
   const subjectIndex = buildEmailSubjectIndex(newEmails);
+  const emailIdMap = new Map(newEmails.map((e) => [e.id, e]));
 
   for (const parsedGoal of analysisResult.goals) {
     try {
-      // 透過 source_subject 匹配回原始 email，取得 ID 與連結
-      const matchedEmail = matchGoalToEmail(parsedGoal, subjectIndex);
+      // 優先使用 AI 回傳的 source_email_id 直接查找，fallback 至 subject 匹配
+      let matchedEmail = null;
+      if (parsedGoal.source_email_id && emailIdMap.has(parsedGoal.source_email_id)) {
+        matchedEmail = emailIdMap.get(parsedGoal.source_email_id);
+      } else {
+        matchedEmail = matchGoalToEmail(parsedGoal, subjectIndex);
+      }
       const sourceEmailId = matchedEmail ? matchedEmail.id : null;
       const sourceLink = matchedEmail ? generateGmailLink(matchedEmail.id) : null;
 
