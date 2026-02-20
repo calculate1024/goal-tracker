@@ -14,7 +14,7 @@
 
 import { fetchLatestEmails, fetchUserEmail, sendEmail } from "./gmailService.js";
 import { analyzeEmails, buildSummaryEmail } from "./aiService.js";
-import { addGoal, getProcessedEmailIds } from "./store.js";
+import { addGoal, getProcessedEmailIds, getCategories } from "./store.js";
 import { getConfig, getAccessToken } from "./settings.js";
 
 // ── Type Definitions ────────────────────────
@@ -246,7 +246,8 @@ export async function runEmailToGoal(maxEmails = 100) {
 
   let analysisResult;
   try {
-    analysisResult = await analyzeEmails(emailBodies, userEmail || "（未知使用者）");
+    const categories = getCategories();
+    analysisResult = await analyzeEmails(emailBodies, userEmail || "（未知使用者）", categories);
   } catch (err) {
     return {
       ok: false,

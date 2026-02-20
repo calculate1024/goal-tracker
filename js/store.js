@@ -68,7 +68,14 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && Array.isArray(saved.goals)) {
       saved.goals.forEach(migrateGoal);
-      return { ...getDefaultState(), ...saved, categories: [...DEFAULT_CATEGORIES] };
+      return {
+        ...getDefaultState(),
+        ...saved,
+        categories:
+          Array.isArray(saved.categories) && saved.categories.length > 0
+            ? saved.categories
+            : [...DEFAULT_CATEGORIES],
+      };
     }
     return getDefaultState();
   } catch {
@@ -470,10 +477,88 @@ export function setSortBy(value) {
  * @returns {void}
  */
 export function addCategory(name) {
-  if (!state.categories.includes(name)) {
-    state.categories.push(name);
+  const trimmed = name.trim();
+  if (trimmed && !state.categories.includes(trimmed)) {
+    state.categories.push(trimmed);
     commit();
   }
+}
+
+/**
+ * 刪除分類（至少保留 1 個分類）
+ *
+ * 僅移除分類本身，不自動重新分配目標。
+ * 呼叫端應先透過 reassignGoals() 處理孤兒目標。
+ *
+ * @param {string} name - 要刪除的分類名稱
+ * @returns {{ deleted: boolean, orphanCount: number }}
+ */
+export function deleteCategory(name) {
+  const idx = state.categories.indexOf(name);
+  if (idx === -1) return { deleted: false, orphanCount: 0 };
+  if (state.categories.length <= 1) return { deleted: false, orphanCount: 0 };
+
+  const orphanCount = state.goals.filter((g) => g.category === name).length;
+  state.categories.splice(idx, 1);
+
+  if (state.filterCategory === name) {
+    state.filterCategory = "all";
+  }
+
+  commit();
+  return { deleted: true, orphanCount };
+}
+
+/**
+ * 將指定分類的所有目標重新歸類至另一個分類
+ *
+ * @param {string} oldCategory - 原分類名稱
+ * @param {string} newCategory - 新分類名稱
+ * @returns {number} 被重新歸類的目標數量
+ */
+export function reassignGoals(oldCategory, newCategory) {
+  let count = 0;
+  for (const goal of state.goals) {
+    if (goal.category === oldCategory) {
+      goal.category = newCategory;
+      count++;
+    }
+  }
+  if (count > 0) commit();
+  return count;
+}
+
+/**
+ * 重新命名分類，同步更新所有使用該分類的目標
+ *
+ * @param {string} oldName - 目前的分類名稱
+ * @param {string} newName - 新的分類名稱
+ * @returns {{ renamed: boolean, updatedCount: number }}
+ */
+export function renameCategory(oldName, newName) {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed === oldName) return { renamed: false, updatedCount: 0 };
+  if (state.categories.includes(trimmed)) return { renamed: false, updatedCount: 0 };
+
+  const idx = state.categories.indexOf(oldName);
+  if (idx === -1) return { renamed: false, updatedCount: 0 };
+
+  state.categories[idx] = trimmed;
+
+  let updatedCount = 0;
+  for (const goal of state.goals) {
+    if (goal.category === oldName) {
+      goal.category = trimmed;
+      updatedCount++;
+    }
+  }
+
+  if (state.filterCategory === oldName) {
+    state.filterCategory = trimmed;
+  }
+
+  commit();
+  return { renamed: true, updatedCount };
 }
 
 // ── Public: Export ────────────────────────────
@@ -548,6 +633,16 @@ export function importState(jsonString, mode) {
   const existingIds = new Set(state.goals.map((g) => g.id));
   const newGoals = parsed.goals.filter((g) => !existingIds.has(g.id));
   state.goals.push(...newGoals);
+
+  // merge：合併匯入資料中的新分類
+  if (Array.isArray(parsed.categories)) {
+    for (const cat of parsed.categories) {
+      if (!state.categories.includes(cat)) {
+        state.categories.push(cat);
+      }
+    }
+  }
+
   commit();
   return { ok: true, message: `已合併匯入 ${newGoals.length} 個新目標`, count: newGoals.length };
 }

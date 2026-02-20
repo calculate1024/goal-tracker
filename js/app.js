@@ -21,6 +21,11 @@ import {
   setFilterCategory,
   setSortBy,
   getGoals,
+  getCategories,
+  addCategory,
+  deleteCategory,
+  reassignGoals,
+  renameCategory,
   getExportData,
   importState,
 } from "./store.js";
@@ -66,6 +71,10 @@ import {
   settingsImportBtn,
   settingsImportFile,
   settingsImportResult,
+  categoryListEl,
+  newCategoryInput,
+  addCategoryBtn,
+  categoryResultEl,
 } from "./dom.js";
 
 // ── Modal ────────────────────────────────────
@@ -214,22 +223,32 @@ function handleGoalListEvent(e) {
   }
 }
 
-// ── Export ────────────────────────────────────
+// ── Export / Backup ──────────────────────────
 
 /**
- * 處理 JSON 匯出下載（DOM 操作在 app.js，資料來自 store.js）
+ * 下載目前狀態的 JSON 備份檔案
  *
+ * @param {string} [filename="goals_backup.json"] - 下載檔名
  * @returns {void}
  */
-function handleExport() {
+function downloadBackup(filename = "goals_backup.json") {
   const jsonStr = getExportData();
   const blob = new Blob([jsonStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "goals_backup.json";
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * 處理手動 JSON 匯出下載
+ *
+ * @returns {void}
+ */
+function handleExport() {
+  downloadBackup("goals_backup.json");
 }
 
 // ── Import ──────────────────────────────────
@@ -261,6 +280,137 @@ function handleImport(e) {
   reader.readAsText(file);
 }
 
+// ── Category Management ─────────────────────
+
+/**
+ * 在設定 Modal 中渲染分類列表（動態產生 DOM）
+ *
+ * @returns {void}
+ */
+function renderCategoryList() {
+  const categories = getCategories();
+  categoryListEl.innerHTML = "";
+
+  categories.forEach((cat) => {
+    const row = document.createElement("div");
+    row.className = "settings__category-row";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "settings__category-name";
+    nameSpan.textContent = cat;
+
+    const actions = document.createElement("div");
+    actions.className = "settings__category-actions";
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "settings__category-rename-btn";
+    renameBtn.textContent = "✎";
+    renameBtn.title = "重新命名";
+    renameBtn.addEventListener("click", () => handleRenameCategory(cat));
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "settings__category-delete-btn";
+    deleteBtn.textContent = "✕";
+    deleteBtn.title = "刪除";
+    deleteBtn.disabled = categories.length <= 1;
+    deleteBtn.addEventListener("click", () => handleDeleteCategory(cat));
+
+    actions.append(renameBtn, deleteBtn);
+    row.append(nameSpan, actions);
+    categoryListEl.appendChild(row);
+  });
+
+  categoryResultEl.textContent = "";
+}
+
+/**
+ * 處理新增分類
+ *
+ * @returns {void}
+ */
+function handleAddCategory() {
+  const name = newCategoryInput.value.trim();
+  if (!name) return;
+
+  if (name.length > 20) {
+    categoryResultEl.textContent = "分類名稱不可超過 20 字";
+    return;
+  }
+
+  const categories = getCategories();
+  if (categories.includes(name)) {
+    categoryResultEl.textContent = "此分類已存在";
+    return;
+  }
+
+  addCategory(name);
+  newCategoryInput.value = "";
+  categoryResultEl.textContent = "";
+  renderCategoryList();
+}
+
+/**
+ * 處理刪除分類（讓用戶選擇目標歸類）
+ *
+ * @param {string} name - 要刪除的分類名稱
+ * @returns {void}
+ */
+function handleDeleteCategory(name) {
+  const goals = getGoals();
+  const orphanCount = goals.filter((g) => g.category === name).length;
+
+  if (orphanCount > 0) {
+    // 讓用戶從剩餘分類中選擇歸類
+    const remaining = getCategories().filter((c) => c !== name);
+    const options = remaining.map((c, i) => `${i + 1}. ${c}`).join("\n");
+    const input = prompt(
+      `分類「${name}」下有 ${orphanCount} 個目標。\n\n請選擇要將這些目標歸類至哪個分類（輸入編號）：\n${options}`
+    );
+
+    if (input === null) return; // 使用者取消
+
+    const idx = parseInt(input, 10) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= remaining.length) {
+      categoryResultEl.textContent = "輸入無效，刪除已取消";
+      return;
+    }
+
+    reassignGoals(name, remaining[idx]);
+    deleteCategory(name);
+    categoryResultEl.textContent = `已刪除「${name}」，${orphanCount} 個目標已移至「${remaining[idx]}」`;
+  } else {
+    if (!confirm(`確定要刪除分類「${name}」嗎？`)) return;
+    deleteCategory(name);
+    categoryResultEl.textContent = `已刪除「${name}」`;
+  }
+
+  renderCategoryList();
+}
+
+/**
+ * 處理重新命名分類
+ *
+ * @param {string} oldName - 目前的分類名稱
+ * @returns {void}
+ */
+function handleRenameCategory(oldName) {
+  const newName = prompt(`將「${oldName}」重新命名為：`, oldName);
+  if (newName === null) return;
+
+  const result = renameCategory(oldName, newName);
+  if (result.renamed) {
+    categoryResultEl.textContent =
+      result.updatedCount > 0
+        ? `已重新命名，${result.updatedCount} 個目標已更新`
+        : "已重新命名";
+    renderCategoryList();
+  } else {
+    categoryResultEl.textContent = "重新命名失敗（名稱重複、無效或相同）";
+  }
+}
+
 // ── Settings Modal ───────────────────────────
 
 /**
@@ -274,6 +424,7 @@ function openSettings() {
   testResultEl.textContent = "";
   testResultEl.className = "settings__test-result";
   updateGmailAuthUI();
+  renderCategoryList();
   settingsModal.classList.add("modal--open");
 }
 
@@ -471,6 +622,13 @@ async function handleEmailToGoal() {
   emailToGoalBtn.disabled = true;
 
   try {
+    // 自動備份：在 AI 寫入新目標前保存還原點
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    downloadBackup(`goals_auto_backup_${timestamp}.json`);
+
     const result = await runEmailToGoal();
     showToast(result.message, result.ok ? "success" : "fail");
     renderAll();
@@ -500,6 +658,15 @@ disconnectGmailBtn.addEventListener("click", handleDisconnectGmail);
 saveApiKeyBtn.addEventListener("click", handleSaveApiKey);
 settingsImportBtn.addEventListener("click", () => settingsImportFile.click());
 settingsImportFile.addEventListener("change", handleSettingsImport);
+
+// Category Management
+addCategoryBtn.addEventListener("click", handleAddCategory);
+newCategoryInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    handleAddCategory();
+  }
+});
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {

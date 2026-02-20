@@ -150,3 +150,17 @@ export const settingsImportResult = document.getElementById("settingsImportResul
 
 /** @type {HTMLElement} 金鑰操作結果文字 */
 export const keyResultEl = document.getElementById("keyResult");
+
+// ── Category Management ────────────────────
+
+/** @type {HTMLElement} 分類列表容器（設定 Modal 內） */
+export const categoryListEl = document.getElementById("categoryList");
+
+/** @type {HTMLInputElement} 新分類名稱輸入框 */
+export const newCategoryInput = document.getElementById("newCategoryInput");
+
+/** @type {HTMLButtonElement} 新增分類按鈕 */
+export const addCategoryBtn = document.getElementById("addCategoryBtn");
+
+/** @type {HTMLElement} 分類操作結果文字 */
+export const categoryResultEl = document.getElementById("categoryResult");

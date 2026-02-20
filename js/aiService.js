@@ -61,11 +61,12 @@ function sanitizeEmailContent(text) {
 /**
  * 建立發送給 AI 的 Prompt（批次分析 + 篩選 + SMART 原則）
  *
- * @param {string} emailBodies - 格式化後的多封信件內容
- * @param {string} userEmail   - 使用者的 email 地址
+ * @param {string}   emailBodies - 格式化後的多封信件內容
+ * @param {string}   userEmail   - 使用者的 email 地址
+ * @param {string[]} categories  - 使用者自訂的分類列表
  * @returns {string} 格式化後的 Prompt
  */
-function buildPrompt(emailBodies, userEmail) {
+function buildPrompt(emailBodies, userEmail, categories) {
   return `你是一位專業的個人目標管理顧問，擅長運用 SMART 原則將模糊的想法轉化為可執行的目標。
 
 ## 第一步：信件篩選（關鍵）
@@ -114,11 +115,7 @@ JSON 結構如下：
       "sent_by_me": number
     },
     "categories_distribution": {
-      "核心專案": number,
-      "日常營運": number,
-      "專業成長": number,
-      "外部協作": number,
-      "個人管理": number
+${categories.map((c) => `      "${c}": number`).join(",\n")}
     },
     "top_priority": {
       "title": "string - 最重要的一項目標",
@@ -130,7 +127,7 @@ JSON 結構如下：
   "goals": [
     {
       "title": "string - 以動詞開頭，不超過 30 字",
-      "category": "string - 核心專案 | 日常營運 | 專業成長 | 外部協作 | 個人管理",
+      "category": "string - ${categories.join(" | ")}",
       "priority": "string - high | medium | low",
       "source_email_id": "string - 來源信件的 Email-ID（直接複製信件標頭中的 Email-ID 值）",
       "source_subject": "string - 來源信件主旨",
@@ -143,7 +140,7 @@ JSON 結構如下：
 
 ## 欄位規則
 1. title：具體且可執行的一句話，不超過 30 字
-2. category：從 核心專案、日常營運、專業成長、外部協作、個人管理 中擇一
+2. category：從 ${categories.join("、")} 中擇一
 3. priority：high = 48小時內需處理或影響重大；medium = 本週內；low = 可延後
 4. source_email_id：必須原封不動複製該目標對應信件標頭的 Email-ID 值
 5. subtasks：拆解為 2~5 個具體步驟，每個以動詞開頭
@@ -212,9 +209,10 @@ function formatApiError(status, body) {
  * 從 AI 回應文字中解析 JSON，容忍 markdown 包裹
  *
  * @param {string} text - AI 回應原始文字
+ * @param {string[]} categories - 使用者自訂的分類列表
  * @returns {AnalysisResult} 解析結果
  */
-function parseAIResponse(text) {
+function parseAIResponse(text, categories) {
   // 移除可能的 markdown code block 包裹
   const cleaned = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/, "");
 
@@ -225,14 +223,14 @@ function parseAIResponse(text) {
     throw new Error("AI 回傳的 JSON 格式不符預期（缺少 analysis_summary 或 goals）");
   }
 
-  const VALID_CATEGORIES = ["核心專案", "日常營運", "專業成長", "外部協作", "個人管理"];
+  const VALID_CATEGORIES = categories;
   const VALID_PRIORITIES = ["high", "medium", "low"];
 
   return {
     analysis_summary: parsed.analysis_summary,
     goals: parsed.goals.slice(0, MAX_GOALS).map((g) => ({
       title: (typeof g.title === "string" ? g.title : "").slice(0, MAX_TITLE_LENGTH),
-      category: VALID_CATEGORIES.includes(g.category) ? g.category : "核心專案",
+      category: VALID_CATEGORIES.includes(g.category) ? g.category : VALID_CATEGORIES[0],
       priority: VALID_PRIORITIES.includes(g.priority) ? g.priority : "medium",
       source_email_id: typeof g.source_email_id === "string" ? g.source_email_id : "",
       source_subject: (g.source_subject || "").slice(0, MAX_FIELD_LENGTH),
@@ -256,18 +254,19 @@ function parseAIResponse(text) {
 /**
  * 批次分析多封 Email 內容，透過 Anthropic API 產出篩選摘要與目標陣列
  *
- * @param {string} emailBodies - 格式化後的多封信件內容
- * @param {string} userEmail   - 使用者的 email 地址
+ * @param {string}   emailBodies - 格式化後的多封信件內容
+ * @param {string}   userEmail   - 使用者的 email 地址
+ * @param {string[]} categories  - 使用者自訂的分類列表
  * @returns {Promise<AnalysisResult>} 分析摘要與目標陣列
  * @throws {Error} API Key 未設定、無效、額度不足或網路錯誤
  */
-export async function analyzeEmails(emailBodies, userEmail) {
+export async function analyzeEmails(emailBodies, userEmail, categories) {
   const apiKey = getConfig("aiApiKey");
   if (!apiKey) {
     throw new Error("尚未設定 AI API Key，請至設定頁面填寫");
   }
 
-  const prompt = buildPrompt(emailBodies, userEmail);
+  const prompt = buildPrompt(emailBodies, userEmail, categories);
 
   let response;
   try {
@@ -301,7 +300,7 @@ export async function analyzeEmails(emailBodies, userEmail) {
   }
 
   try {
-    return parseAIResponse(text);
+    return parseAIResponse(text, categories);
   } catch (err) {
     throw new Error("AI 回應解析失敗：" + err.message);
   }
@@ -371,10 +370,11 @@ ${skipped || "  （無）"}
 /**
  * 取得用於除錯的 Prompt 預覽
  *
- * @param {string} emailBodies - 格式化後的多封信件內容
- * @param {string} userEmail   - 使用者的 email 地址
+ * @param {string}   emailBodies - 格式化後的多封信件內容
+ * @param {string}   userEmail   - 使用者的 email 地址
+ * @param {string[]} categories  - 使用者自訂的分類列表
  * @returns {string} 格式化後的 Prompt 字串
  */
-export function getPromptPreview(emailBodies, userEmail) {
-  return buildPrompt(emailBodies, userEmail);
+export function getPromptPreview(emailBodies, userEmail, categories) {
+  return buildPrompt(emailBodies, userEmail, categories);
 }

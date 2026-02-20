@@ -234,6 +234,27 @@
         </div>
 
         <div class="settings__field">
+          <label class="settings__label">分類管理</label>
+          <div class="settings__category-list" id="categoryList">
+            <!-- 由 app.js 動態渲染 -->
+          </div>
+          <div class="settings__category-add">
+            <input
+              class="settings__category-input"
+              id="newCategoryInput"
+              type="text"
+              placeholder="輸入新分類名稱"
+              autocomplete="off"
+              maxlength="20"
+            >
+            <button class="settings__category-add-btn" id="addCategoryBtn" type="button">
+              + 新增
+            </button>
+          </div>
+          <span class="settings__category-hint" id="categoryResult"></span>
+        </div>
+
+        <div class="settings__field">
           <label class="settings__label">匯入備份</label>
           <div class="settings__actions">
             <button class="settings__import-btn" id="settingsImportBtn" type="button">

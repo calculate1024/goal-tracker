@@ -964,6 +964,113 @@ img {
   background-color: var(--color-primary-hover);
 }
 
+/* ── settings — Category Management ── */
+
+.settings__category-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.settings__category-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.settings__category-name {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.settings__category-actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.settings__category-rename-btn,
+.settings__category-delete-btn {
+  width: var(--size-action-btn);
+  height: var(--size-action-btn);
+  font-size: var(--font-size-base);
+  color: var(--color-text-placeholder);
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.settings__category-rename-btn:hover {
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+}
+
+.settings__category-delete-btn:hover {
+  color: var(--color-danger);
+  background-color: var(--color-danger-bg);
+}
+
+.settings__category-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.settings__category-delete-btn:disabled:hover {
+  color: var(--color-text-placeholder);
+  background-color: transparent;
+}
+
+.settings__category-add {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.settings__category-input {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.settings__category-input:focus {
+  border-color: var(--color-border-focus);
+}
+
+.settings__category-add-btn {
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--font-size-base);
+  color: var(--color-primary);
+  background: none;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.settings__category-add-btn:hover {
+  color: var(--color-surface);
+  background-color: var(--color-primary);
+}
+
+.settings__category-hint {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 
 /* =================================================================
    RWD — Mobile（≤ 576px）
