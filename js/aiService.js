@@ -59,6 +59,21 @@ function sanitizeEmailContent(text) {
 }
 
 /**
+ * 清理分類名稱，防止 Prompt Injection
+ *
+ * 移除可能影響 AI Prompt 結構的特殊字元：
+ * - 換行符（\r\n）可突破 Prompt 區段邊界
+ * - 雙引號（"）可突破 JSON schema 範例結構
+ * - 反斜線（\）可用於轉義控制
+ *
+ * @param {string} name - 原始分類名稱
+ * @returns {string} 清理後的名稱
+ */
+function sanitizeCategoryForPrompt(name) {
+  return String(name).replace(/[\r\n"\\]/g, " ").trim().slice(0, 20);
+}
+
+/**
  * 建立發送給 AI 的 Prompt（批次分析 + 篩選 + SMART 原則）
  *
  * @param {string}   emailBodies - 格式化後的多封信件內容
@@ -67,6 +82,10 @@ function sanitizeEmailContent(text) {
  * @returns {string} 格式化後的 Prompt
  */
 function buildPrompt(emailBodies, userEmail, categories) {
+  // 清理分類名稱，防止 Prompt Injection
+  const safeCategories = categories
+    .map(sanitizeCategoryForPrompt)
+    .filter((c) => c.length > 0);
   return `你是一位專業的個人目標管理顧問，擅長運用 SMART 原則將模糊的想法轉化為可執行的目標。
 
 ## 第一步：信件篩選（關鍵）
@@ -115,7 +134,7 @@ JSON 結構如下：
       "sent_by_me": number
     },
     "categories_distribution": {
-${categories.map((c) => `      "${c}": number`).join(",\n")}
+${safeCategories.map((c) => `      "${c}": number`).join(",\n")}
     },
     "top_priority": {
       "title": "string - 最重要的一項目標",
@@ -127,7 +146,7 @@ ${categories.map((c) => `      "${c}": number`).join(",\n")}
   "goals": [
     {
       "title": "string - 以動詞開頭，不超過 30 字",
-      "category": "string - ${categories.join(" | ")}",
+      "category": "string - ${safeCategories.join(" | ")}",
       "priority": "string - high | medium | low",
       "source_email_id": "string - 來源信件的 Email-ID（直接複製信件標頭中的 Email-ID 值）",
       "source_subject": "string - 來源信件主旨",
@@ -140,7 +159,7 @@ ${categories.map((c) => `      "${c}": number`).join(",\n")}
 
 ## 欄位規則
 1. title：具體且可執行的一句話，不超過 30 字
-2. category：從 ${categories.join("、")} 中擇一
+2. category：從 ${safeCategories.join("、")} 中擇一
 3. priority：high = 48小時內需處理或影響重大；medium = 本週內；low = 可延後
 4. source_email_id：必須原封不動複製該目標對應信件標頭的 Email-ID 值
 5. subtasks：拆解為 2~5 個具體步驟，每個以動詞開頭

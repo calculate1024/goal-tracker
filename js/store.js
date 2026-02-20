@@ -68,12 +68,18 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && Array.isArray(saved.goals)) {
       saved.goals.forEach(migrateGoal);
+      // 過濾無效的分類項目（僅保留非空字串）
+      const validCategories =
+        Array.isArray(saved.categories)
+          ? saved.categories.filter((c) => typeof c === "string" && c.trim().length > 0)
+          : [];
+
       return {
         ...getDefaultState(),
         ...saved,
         categories:
-          Array.isArray(saved.categories) && saved.categories.length > 0
-            ? saved.categories
+          validCategories.length > 0
+            ? validCategories
             : [...DEFAULT_CATEGORIES],
       };
     }
@@ -470,16 +476,30 @@ export function setSortBy(value) {
 
 // ── Public: Category ─────────────────────────
 
+/** @constant {number} 分類名稱最大長度 */
+const MAX_CATEGORY_LENGTH = 20;
+
 /**
- * 新增自訂分類（若已存在則忽略）
+ * 驗證並清理分類名稱
+ *
+ * @param {*} name - 待驗證的值
+ * @returns {string} 清理後的名稱（無效時回傳空字串）
+ */
+function sanitizeCategoryName(name) {
+  if (typeof name !== "string") return "";
+  return name.replace(/[\r\n]/g, " ").trim().slice(0, MAX_CATEGORY_LENGTH);
+}
+
+/**
+ * 新增自訂分類（若已存在、無效或超過長度限制則忽略）
  *
  * @param {string} name - 分類名稱
  * @returns {void}
  */
 export function addCategory(name) {
-  const trimmed = name.trim();
-  if (trimmed && !state.categories.includes(trimmed)) {
-    state.categories.push(trimmed);
+  const sanitized = sanitizeCategoryName(name);
+  if (sanitized && !state.categories.includes(sanitized)) {
+    state.categories.push(sanitized);
     commit();
   }
 }
@@ -513,10 +533,12 @@ export function deleteCategory(name) {
  * 將指定分類的所有目標重新歸類至另一個分類
  *
  * @param {string} oldCategory - 原分類名稱
- * @param {string} newCategory - 新分類名稱
- * @returns {number} 被重新歸類的目標數量
+ * @param {string} newCategory - 新分類名稱（必須存在於分類列表中）
+ * @returns {number} 被重新歸類的目標數量（若目標分類無效則回傳 0）
  */
 export function reassignGoals(oldCategory, newCategory) {
+  if (!state.categories.includes(newCategory)) return 0;
+
   let count = 0;
   for (const goal of state.goals) {
     if (goal.category === oldCategory) {
@@ -536,7 +558,7 @@ export function reassignGoals(oldCategory, newCategory) {
  * @returns {{ renamed: boolean, updatedCount: number }}
  */
 export function renameCategory(oldName, newName) {
-  const trimmed = newName.trim();
+  const trimmed = sanitizeCategoryName(newName);
   if (!trimmed || trimmed === oldName) return { renamed: false, updatedCount: 0 };
   if (state.categories.includes(trimmed)) return { renamed: false, updatedCount: 0 };
 
@@ -623,8 +645,23 @@ export function importState(jsonString, mode) {
   // 遷移匯入的 goals 至最新結構
   parsed.goals.forEach(migrateGoal);
 
+  // 清理匯入的分類：僅保留有效字串並截斷長度
+  const sanitizedImportCategories = Array.isArray(parsed.categories)
+    ? parsed.categories
+        .filter((c) => typeof c === "string" && c.trim().length > 0)
+        .map((c) => c.trim().slice(0, MAX_CATEGORY_LENGTH))
+    : [];
+
   if (mode === "overwrite") {
-    state = { ...getDefaultState(), ...parsed };
+    state = {
+      ...getDefaultState(),
+      ...parsed,
+      // 確保至少有一個分類（防止空陣列覆蓋）
+      categories:
+        sanitizedImportCategories.length > 0
+          ? sanitizedImportCategories
+          : [...DEFAULT_CATEGORIES],
+    };
     commit();
     return { ok: true, message: `已覆蓋還原 ${state.goals.length} 個目標`, count: state.goals.length };
   }
@@ -634,12 +671,10 @@ export function importState(jsonString, mode) {
   const newGoals = parsed.goals.filter((g) => !existingIds.has(g.id));
   state.goals.push(...newGoals);
 
-  // merge：合併匯入資料中的新分類
-  if (Array.isArray(parsed.categories)) {
-    for (const cat of parsed.categories) {
-      if (!state.categories.includes(cat)) {
-        state.categories.push(cat);
-      }
+  // merge：合併匯入資料中的新分類（已清理過）
+  for (const cat of sanitizedImportCategories) {
+    if (!state.categories.includes(cat)) {
+      state.categories.push(cat);
     }
   }
 

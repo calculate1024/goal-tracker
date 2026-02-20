@@ -238,8 +238,11 @@ function downloadBackup(filename = "goals_backup.json") {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(link);
+  // 延遲釋放 Object URL，確保瀏覽器完成下載讀取
+  setTimeout(() => URL.revokeObjectURL(url), 200);
 }
 
 /**
@@ -396,8 +399,18 @@ function handleDeleteCategory(name) {
  * @returns {void}
  */
 function handleRenameCategory(oldName) {
-  const newName = prompt(`將「${oldName}」重新命名為：`, oldName);
+  const newName = prompt(`將「${oldName}」重新命名為（最多 20 字）：`, oldName);
   if (newName === null) return;
+
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    categoryResultEl.textContent = "名稱不可為空";
+    return;
+  }
+  if (trimmed.length > 20) {
+    categoryResultEl.textContent = "名稱不可超過 20 字";
+    return;
+  }
 
   const result = renameCategory(oldName, newName);
   if (result.renamed) {
@@ -407,7 +420,7 @@ function handleRenameCategory(oldName) {
         : "已重新命名";
     renderCategoryList();
   } else {
-    categoryResultEl.textContent = "重新命名失敗（名稱重複、無效或相同）";
+    categoryResultEl.textContent = "重新命名失敗（名稱重複或相同）";
   }
 }
 

@@ -244,9 +244,9 @@ export async function runEmailToGoal(maxEmails = 100) {
   // Step 3: 合併信件並送 AI 批次分析
   const emailBodies = formatEmailsForPrompt(newEmails);
 
+  const categories = getCategories();
   let analysisResult;
   try {
-    const categories = getCategories();
     analysisResult = await analyzeEmails(emailBodies, userEmail || "（未知使用者）", categories);
   } catch (err) {
     return {
@@ -276,7 +276,7 @@ export async function runEmailToGoal(maxEmails = 100) {
 
       const goal = addGoal({
         title: parsedGoal.title,
-        category: parsedGoal.category || "學習",
+        category: parsedGoal.category || categories[0],
         deadline: parsedGoal.deadline,
         subtasks: parsedGoal.subtasks,
         sourceEmailId,
